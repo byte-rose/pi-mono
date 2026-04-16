@@ -21,8 +21,8 @@
     "dockerode": "^4.0.2"
   },
   "devDependencies": {
-    "typescript": "^5.9.2",
-    "@types/node": "^22.10.5",
-    "@types/dockerode": "^3.3.32"
+    "@types/dockerode": "^3.3.32",
+    "@types/node": "^22.19.17",
+    "typescript": "^5.9.2"
   }
 }
