@@ -18,12 +18,13 @@
     "test": "node --test dist/**/*.test.js 2>/dev/null || true"
   },
   "dependencies": {
+    "@byte-rose/nyati-security-agent": "*",
     "@byte-rose/nyati-security-artifacts": "*",
     "@byte-rose/nyati-security-reporting": "*",
     "@sinclair/typebox": "^0.34.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.2",
-    "@types/node": "^22.10.5"
+    "@types/node": "^22.19.17",
+    "typescript": "^5.9.2"
   }
 }
