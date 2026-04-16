@@ -1,0 +1,20 @@
+// packages/security-runtime/src/runtime.ts
+
+export interface WorkspaceHandle {
+	workspaceId: string;
+	containerId: string;
+	workspacePath: string;
+}
+
+export interface CreateWorkspaceInput {
+	agentId: string;
+	localSources?: Array<{ sourcePath: string; workspaceSubdir?: string }>;
+	envVars?: Record<string, string>;
+}
+
+export interface SecurityRuntime {
+	createWorkspace(input: CreateWorkspaceInput): Promise<WorkspaceHandle>;
+	destroyWorkspace(workspaceId: string): Promise<void>;
+	syncTargets(workspaceId: string, targets: unknown[]): Promise<void>;
+	cleanup(): void;
+}
