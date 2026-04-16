@@ -78,7 +78,7 @@ export class ArtifactStore {
 
 	private async appendEvent(event: StoreEvent): Promise<void> {
 		await this.ensureDir();
-		await appendFile(this.logPath, `${JSON.stringify(event)}\\n`, "utf-8");
+		await appendFile(this.logPath, JSON.stringify(event) + "\n", "utf-8");
 	}
 
 	async appendFinding(data: Omit<Finding, "id" | "createdAt" | "updatedAt">): Promise<string> {
