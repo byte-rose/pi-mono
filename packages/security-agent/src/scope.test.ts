@@ -1,18 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { SecurityScope } from "./scope.js";
 import { isActionAllowed, isDomainAllowed, validateScope } from "./scope-validator.js";
 
 // minimal valid scope helper
-const baseScope = {
+const baseScope: SecurityScope = {
 	engagementId: "eng-001",
-	mode: "blackbox" as const,
-	scanMode: "standard" as const,
-	executionMode: "read_only" as const,
-	targets: [
-		{ id: "t1", type: "web_application" as const, value: "https://example.com", origins: ["https://example.com"] },
-	],
+	mode: "blackbox",
+	scanMode: "standard",
+	executionMode: "read_only",
+	targets: [{ id: "t1", type: "web_application", value: "https://example.com", origins: ["https://example.com"] }],
 	exclusions: [],
-	allowedActions: ["read_files", "http_test"] as ("read_files" | "http_test")[],
+	allowedActions: ["read_files", "http_test"],
 	filesystem: { readableRoots: [], writableRoots: [], blockedPaths: [], artifactDir: "/tmp/run" },
 	network: {
 		allowedDomains: ["example.com"],
@@ -22,8 +21,8 @@ const baseScope = {
 		browserEnabled: false,
 		proxyEnabled: false,
 	},
-	reporting: { outputDir: "/tmp/reports", formats: ["markdown"] as ("markdown" | "json" | "sarif" | "html")[] },
-	metadata: { source: "cli" as const, verified: true, createdAt: Date.now(), updatedAt: Date.now() },
+	reporting: { outputDir: "/tmp/reports", formats: ["markdown"] },
+	metadata: { source: "cli", verified: true, createdAt: Date.now(), updatedAt: Date.now() },
 };
 
 describe("validateScope", () => {
