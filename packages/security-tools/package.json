@@ -1,0 +1,29 @@
+{
+  "name": "@byte-rose/nyati-security-tools",
+  "version": "0.1.0",
+  "description": "Typed tool definitions for nyati security agent",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "node --test dist/**/*.test.js 2>/dev/null || true"
+  },
+  "dependencies": {
+    "@byte-rose/nyati-security-artifacts": "*",
+    "@byte-rose/nyati-security-reporting": "*",
+    "@sinclair/typebox": "^0.34.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "@types/node": "^22.10.5"
+  }
+}

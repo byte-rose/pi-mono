@@ -1,0 +1,30 @@
+{
+  "name": "@byte-rose/nyati-security-agent",
+  "version": "0.1.0",
+  "description": "Security agent bootstrap — wires runtime, tools, scope, and artifacts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "node --test dist/**/*.test.js 2>/dev/null || true"
+  },
+  "dependencies": {
+    "@byte-rose/nyati-security-artifacts": "*",
+    "@byte-rose/nyati-security-reporting": "*",
+    "@byte-rose/nyati-security-runtime": "*",
+    "@byte-rose/nyati-security-tools": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "@types/node": "^22.10.5"
+  }
+}

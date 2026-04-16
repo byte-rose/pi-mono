@@ -1,0 +1,9 @@
+{
+  "name": "@byte-rose/nyati-security-skills",
+  "version": "0.1.0",
+  "description": "Security skill bundles for nyati — vulnerability, scan-mode, and tooling skills",
+  "type": "module",
+  "scripts": {
+    "clean": "echo nothing to clean"
+  }
+}
