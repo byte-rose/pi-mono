@@ -18,7 +18,7 @@ export function validateScope(scope: SecurityScope): string[] {
 	if (!scope.filesystem.artifactDir?.trim()) errors.push("filesystem.artifactDir cannot be empty");
 	if (!scope.reporting.outputDir?.trim()) errors.push("reporting.outputDir cannot be empty");
 
-	for (const [i, target] of scope.targets.entries()) {
+	for (const [i, target] of (scope.targets ?? []).entries()) {
 		if (!target.value?.trim()) errors.push(`targets[${i}].value cannot be empty`);
 		if (!target.id?.trim()) errors.push(`targets[${i}].id cannot be empty`);
 	}
@@ -33,7 +33,8 @@ export function isActionAllowed(scope: SecurityScope, action: string): boolean {
 
 /** Check if a domain is within network policy. */
 export function isDomainAllowed(scope: SecurityScope, domain: string): boolean {
-	if (scope.network.deniedDomains.some((d) => domain.endsWith(d))) return false;
+	if (!domain.trim()) return false;
+	if (scope.network.deniedDomains.some((d) => domain === d || domain.endsWith("." + d))) return false;
 	if (scope.network.allowedDomains.length === 0) return true;
-	return scope.network.allowedDomains.some((d) => domain.endsWith(d));
+	return scope.network.allowedDomains.some((d) => domain === d || domain.endsWith("." + d));
 }
