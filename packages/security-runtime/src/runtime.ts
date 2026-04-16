@@ -12,9 +12,21 @@ export interface CreateWorkspaceInput {
 	envVars?: Record<string, string>;
 }
 
+export interface ExecOptions {
+	workingDir?: string;
+	timeoutMs?: number;
+}
+
+export interface ExecResult {
+	stdout: string;
+	stderr: string;
+	exitCode: number;
+}
+
 export interface SecurityRuntime {
 	createWorkspace(input: CreateWorkspaceInput): Promise<WorkspaceHandle>;
 	destroyWorkspace(workspaceId: string): Promise<void>;
 	syncTargets(workspaceId: string, targets: unknown[]): Promise<void>;
+	execInContainer(workspaceId: string, command: string, options?: ExecOptions): Promise<ExecResult>;
 	cleanup(): void;
 }

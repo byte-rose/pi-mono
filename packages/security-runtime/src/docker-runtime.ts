@@ -1,8 +1,9 @@
 // packages/security-runtime/src/docker-runtime.ts
 import { randomBytes } from "node:crypto";
+import { PassThrough } from "node:stream";
 import Dockerode from "dockerode";
 import { SandboxInitializationError } from "./errors.js";
-import type { CreateWorkspaceInput, SecurityRuntime, WorkspaceHandle } from "./runtime.js";
+import type { CreateWorkspaceInput, ExecOptions, ExecResult, SecurityRuntime, WorkspaceHandle } from "./runtime.js";
 
 const CONTAINER_WORKSPACE_PATH = "/workspace";
 const DEFAULT_IMAGE = process.env.NYATI_SANDBOX_IMAGE ?? "nyati-sandbox:latest";
@@ -105,5 +106,49 @@ export class DockerSecurityRuntime implements SecurityRuntime {
 			container.remove({ force: true }).catch(() => {});
 			this.containers.delete(id);
 		}
+	}
+
+	async execInContainer(workspaceId: string, command: string, options?: ExecOptions): Promise<ExecResult> {
+		const container = this.containers.get(workspaceId) ?? this.docker.getContainer(workspaceId);
+
+		const exec = await container.exec({
+			Cmd: ["sh", "-c", command],
+			AttachStdout: true,
+			AttachStderr: true,
+			WorkingDir: options?.workingDir ?? CONTAINER_WORKSPACE_PATH,
+		});
+
+		const stdoutChunks: Buffer[] = [];
+		const stderrChunks: Buffer[] = [];
+		const stdoutStream = new PassThrough();
+		const stderrStream = new PassThrough();
+		stdoutStream.on("data", (chunk: Buffer) => {
+			stdoutChunks.push(chunk);
+		});
+		stderrStream.on("data", (chunk: Buffer) => {
+			stderrChunks.push(chunk);
+		});
+
+		const stream = await exec.start({ hijack: true, stdin: false });
+
+		await new Promise<void>((resolve, reject) => {
+			this.docker.modem.demuxStream(stream, stdoutStream, stderrStream);
+			stream.on("end", () => {
+				stdoutStream.end();
+				stderrStream.end();
+				resolve();
+			});
+			stream.on("error", reject);
+			if (options?.timeoutMs) {
+				setTimeout(() => reject(new Error(`Command timed out after ${options.timeoutMs}ms`)), options.timeoutMs);
+			}
+		});
+
+		const info = await exec.inspect();
+		return {
+			stdout: Buffer.concat(stdoutChunks).toString("utf-8"),
+			stderr: Buffer.concat(stderrChunks).toString("utf-8"),
+			exitCode: info.ExitCode ?? -1,
+		};
 	}
 }
