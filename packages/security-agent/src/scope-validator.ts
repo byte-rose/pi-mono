@@ -34,7 +34,7 @@ export function isActionAllowed(scope: SecurityScope, action: string): boolean {
 /** Check if a domain is within network policy. */
 export function isDomainAllowed(scope: SecurityScope, domain: string): boolean {
 	if (!domain.trim()) return false;
-	if (scope.network.deniedDomains.some((d) => domain === d || domain.endsWith("." + d))) return false;
+	if (scope.network.deniedDomains.some((d) => domain === d || domain.endsWith(`.${d}`))) return false;
 	if (scope.network.allowedDomains.length === 0) return true;
-	return scope.network.allowedDomains.some((d) => domain === d || domain.endsWith("." + d));
+	return scope.network.allowedDomains.some((d) => domain === d || domain.endsWith(`.${d}`));
 }
