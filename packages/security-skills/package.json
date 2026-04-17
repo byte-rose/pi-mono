@@ -3,7 +3,22 @@
   "version": "0.1.0",
   "description": "Security skill bundles for nyati — vulnerability, scan-mode, and tooling skills",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "clean": "echo nothing to clean"
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "node --test dist/**/*.test.js 2>/dev/null || true"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "typescript": "^5.9.2"
   }
 }
