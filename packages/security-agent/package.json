@@ -21,6 +21,7 @@
     "@byte-rose/nyati-security-artifacts": "*",
     "@byte-rose/nyati-security-reporting": "*",
     "@byte-rose/nyati-security-runtime": "*",
+    "@byte-rose/nyati-security-skills": "*",
     "@byte-rose/nyati-security-tools": "*"
   },
   "devDependencies": {

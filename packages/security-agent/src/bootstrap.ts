@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { ArtifactStore } from "@byte-rose/nyati-security-artifacts";
 import { DockerSecurityRuntime } from "@byte-rose/nyati-security-runtime";
+import { defaultSkillsDir, formatSkillsSection, loadSkillsForScope } from "@byte-rose/nyati-security-skills";
 import type { ExecFn } from "@byte-rose/nyati-security-tools";
 import {
 	attachEvidenceTool,
@@ -21,6 +22,7 @@ import {
 import type { SecurityAgentContext } from "./context.js";
 import type { SecurityScope } from "./scope.js";
 import { validateScope } from "./scope-validator.js";
+import { buildSecuritySystemPrompt } from "./system-prompt.js";
 
 export interface CreateSecuritySessionOptions {
 	scope: SecurityScope;
@@ -28,11 +30,17 @@ export interface CreateSecuritySessionOptions {
 	runDir?: string;
 	/** Whether to provision a Docker sandbox. Default: false */
 	useSandbox?: boolean;
+	/**
+	 * Directory containing SKILL.md files. Default: the built-in skills bundled with
+	 * @byte-rose/nyati-security-skills. Pass `null` to disable skill injection.
+	 */
+	skillsDir?: string | null;
 }
 
 export interface SecuritySession {
 	context: SecurityAgentContext;
 	tools: ReturnType<typeof createSecurityTools>;
+	systemPrompt: string;
 	cleanup(): Promise<void>;
 }
 
@@ -56,7 +64,7 @@ function createSecurityTools(ctx: SecurityAgentContext, execFn: ExecFn | null) {
 }
 
 export async function createSecuritySession(options: CreateSecuritySessionOptions): Promise<SecuritySession> {
-	const { scope, useSandbox = false } = options;
+	const { scope, useSandbox = false, skillsDir = defaultSkillsDir } = options;
 
 	const errors = validateScope(scope);
 	if (errors.length > 0) {
@@ -80,11 +88,20 @@ export async function createSecuritySession(options: CreateSecuritySessionOption
 		execFn = runtime.execInContainer.bind(runtime);
 	}
 
+	const skillCtx = {
+		scanMode: scope.scanMode,
+		executionMode: scope.executionMode,
+		targetTypes: scope.targets.map((t) => t.type),
+	};
+	const skills = skillsDir ? loadSkillsForScope(skillCtx, skillsDir) : [];
+	const systemPrompt = buildSecuritySystemPrompt(scope, formatSkillsSection(skills));
+
 	const tools = createSecurityTools(context, execFn);
 
 	return {
 		context,
 		tools,
+		systemPrompt,
 		async cleanup() {
 			if (runtime && context.workspace) {
 				await runtime.destroyWorkspace(context.workspace.workspaceId);

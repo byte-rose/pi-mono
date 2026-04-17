@@ -39,6 +39,9 @@ describe("createSecuritySession", () => {
 		const session = await createSecuritySession({ scope, runDir: TEST_RUN_DIR, useSandbox: false });
 		assert.ok(session.context.store);
 		assert.strictEqual(session.tools.length, 10);
+		assert.ok(typeof session.systemPrompt === "string");
+		assert.ok(session.systemPrompt.includes("test-eng-001"));
+		assert.ok(session.systemPrompt.length > 100);
 		// reporting tools
 		assert.ok(session.tools.some((t) => t.name === "create_finding"));
 		assert.ok(session.tools.some((t) => t.name === "list_findings"));
