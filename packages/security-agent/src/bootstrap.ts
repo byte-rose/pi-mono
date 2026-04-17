@@ -5,11 +5,18 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { ArtifactStore } from "@byte-rose/nyati-security-artifacts";
 import { DockerSecurityRuntime } from "@byte-rose/nyati-security-runtime";
+import type { ExecFn } from "@byte-rose/nyati-security-tools";
 import {
 	attachEvidenceTool,
 	createFindingTool,
 	exportReportTool,
+	getScopeTool,
+	httpRequestTool,
+	httpxTool,
 	listFindingsTool,
+	nucleiTool,
+	semgrepTool,
+	terminalExecTool,
 } from "@byte-rose/nyati-security-tools";
 import type { SecurityAgentContext } from "./context.js";
 import type { SecurityScope } from "./scope.js";
@@ -19,7 +26,7 @@ export interface CreateSecuritySessionOptions {
 	scope: SecurityScope;
 	/** Override the run directory. Default: ~/.nyati/runs/<engagementId>/<timestamp> */
 	runDir?: string;
-	/** Whether to provision a Docker sandbox. Default: false for Phase 1 */
+	/** Whether to provision a Docker sandbox. Default: false */
 	useSandbox?: boolean;
 }
 
@@ -29,12 +36,22 @@ export interface SecuritySession {
 	cleanup(): Promise<void>;
 }
 
-function createSecurityTools(ctx: SecurityAgentContext) {
+function createSecurityTools(ctx: SecurityAgentContext, execFn: ExecFn | null) {
 	return [
+		// Reporting (no sandbox needed)
 		createFindingTool(ctx.store),
 		listFindingsTool(ctx.store),
 		attachEvidenceTool(ctx.store),
 		exportReportTool(ctx.store, ctx.scope.reporting.outputDir),
+		// Runtime (null-safe when no sandbox)
+		terminalExecTool(execFn, ctx.workspace),
+		getScopeTool(ctx.scope),
+		// Network (scope-enforced, uses native fetch)
+		httpRequestTool(ctx.scope),
+		// Scanners (null-safe when no sandbox)
+		nucleiTool(execFn, ctx.workspace),
+		semgrepTool(execFn, ctx.workspace),
+		httpxTool(execFn, ctx.workspace),
 	];
 }
 
@@ -54,13 +71,16 @@ export async function createSecuritySession(options: CreateSecuritySessionOption
 	const context: SecurityAgentContext = { scope, store, runDir };
 
 	let runtime: DockerSecurityRuntime | undefined;
+	let execFn: ExecFn | null = null;
+
 	if (useSandbox) {
 		runtime = new DockerSecurityRuntime();
 		const workspace = await runtime.createWorkspace({ agentId: scope.engagementId });
 		context.workspace = workspace;
+		execFn = runtime.execInContainer.bind(runtime);
 	}
 
-	const tools = createSecurityTools(context);
+	const tools = createSecurityTools(context, execFn);
 
 	return {
 		context,

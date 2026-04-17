@@ -35,14 +35,24 @@ describe("createSecuritySession", () => {
 		await rm(TEST_RUN_DIR, { recursive: true, force: true });
 	});
 
-	it("creates session with tools and store", async () => {
+	it("creates session with 10 tools and store", async () => {
 		const session = await createSecuritySession({ scope, runDir: TEST_RUN_DIR, useSandbox: false });
 		assert.ok(session.context.store);
-		assert.strictEqual(session.tools.length, 4);
+		assert.strictEqual(session.tools.length, 10);
+		// reporting tools
 		assert.ok(session.tools.some((t) => t.name === "create_finding"));
 		assert.ok(session.tools.some((t) => t.name === "list_findings"));
 		assert.ok(session.tools.some((t) => t.name === "attach_evidence"));
 		assert.ok(session.tools.some((t) => t.name === "export_report"));
+		// runtime tools
+		assert.ok(session.tools.some((t) => t.name === "terminal_exec"));
+		assert.ok(session.tools.some((t) => t.name === "get_scope"));
+		// network tools
+		assert.ok(session.tools.some((t) => t.name === "http_request"));
+		// scanner tools
+		assert.ok(session.tools.some((t) => t.name === "nuclei_scan"));
+		assert.ok(session.tools.some((t) => t.name === "semgrep_scan"));
+		assert.ok(session.tools.some((t) => t.name === "httpx_probe"));
 		await session.cleanup();
 	});
 
