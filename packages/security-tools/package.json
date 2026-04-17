@@ -21,6 +21,7 @@
     "@byte-rose/nyati-security-agent": "*",
     "@byte-rose/nyati-security-artifacts": "*",
     "@byte-rose/nyati-security-reporting": "*",
+    "@byte-rose/nyati-security-runtime": "*",
     "@sinclair/typebox": "^0.34.0"
   },
   "devDependencies": {
