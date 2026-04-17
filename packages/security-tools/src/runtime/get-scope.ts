@@ -1,7 +1,7 @@
 // packages/security-tools/src/runtime/get-scope.ts
 
-import type { SecurityScope } from "@byte-rose/nyati-security-agent";
 import { Type } from "@sinclair/typebox";
+import type { SecurityScope } from "../scope.js";
 import type { SecurityTool } from "../types.js";
 
 const getScopeSchema = Type.Object({});

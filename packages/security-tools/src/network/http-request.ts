@@ -1,7 +1,7 @@
 // packages/security-tools/src/network/http-request.ts
 
-import type { SecurityScope } from "@byte-rose/nyati-security-agent";
 import { type Static, Type } from "@sinclair/typebox";
+import type { SecurityScope } from "../scope.js";
 import type { SecurityTool } from "../types.js";
 
 const httpRequestSchema = Type.Object({

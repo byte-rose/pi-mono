@@ -2,14 +2,21 @@
   "name": "@byte-rose/nyati-security-artifacts",
   "version": "0.1.0",
   "description": "Structured artifact models and persistence for nyati security agent",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",

@@ -13,4 +13,5 @@ export type { NucleiFinding } from "./scanners/nuclei.js";
 export { nucleiTool, parseNucleiOutput } from "./scanners/nuclei.js";
 export type { SemgrepFinding } from "./scanners/semgrep.js";
 export { parseSemgrepOutput, semgrepTool } from "./scanners/semgrep.js";
+export * from "./scope.js";
 export * from "./types.js";

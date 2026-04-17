@@ -1,7 +1,7 @@
 // packages/security-tools/src/runtime/get-scope.test.ts
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { SecurityScope } from "@byte-rose/nyati-security-agent";
+import type { SecurityScope } from "../scope.js";
 import { getScopeTool } from "./get-scope.js";
 
 const scope: SecurityScope = {

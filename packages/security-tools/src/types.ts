@@ -1,8 +1,8 @@
 // packages/security-tools/src/types.ts
 
-import type { SecurityScope } from "@byte-rose/nyati-security-agent";
 import type { ArtifactStore } from "@byte-rose/nyati-security-artifacts";
 import type { TSchema } from "@sinclair/typebox";
+import type { SecurityScope } from "./scope.js";
 
 export type { ExecOptions, ExecResult, WorkspaceHandle } from "@byte-rose/nyati-security-runtime";
 

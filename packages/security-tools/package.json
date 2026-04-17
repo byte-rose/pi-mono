@@ -2,14 +2,21 @@
   "name": "@byte-rose/nyati-security-tools",
   "version": "0.1.0",
   "description": "Typed tool definitions for nyati security agent",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",
@@ -18,10 +25,8 @@
     "test": "node --test dist/**/*.test.js 2>/dev/null || true"
   },
   "dependencies": {
-    "@byte-rose/nyati-security-agent": "*",
-    "@byte-rose/nyati-security-artifacts": "*",
-    "@byte-rose/nyati-security-reporting": "*",
-    "@byte-rose/nyati-security-runtime": "*",
+    "@byte-rose/nyati-security-artifacts": "0.1.0",
+    "@byte-rose/nyati-security-runtime": "0.1.0",
     "@sinclair/typebox": "^0.34.0"
   },
   "devDependencies": {
