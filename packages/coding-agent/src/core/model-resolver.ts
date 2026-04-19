@@ -13,7 +13,7 @@ import type { ModelRegistry } from "./model-registry.js";
 /** Default model IDs for each known provider */
 export const defaultModelPerProvider: Record<KnownProvider, string> = {
 	"amazon-bedrock": "us.anthropic.claude-opus-4-6-v1",
-	anthropic: "claude-opus-4-6",
+	anthropic: "claude-opus-4-7",
 	openai: "gpt-5.4",
 	"azure-openai-responses": "gpt-5.2",
 	"openai-codex": "gpt-5.4",
@@ -32,7 +32,7 @@ export const defaultModelPerProvider: Record<KnownProvider, string> = {
 	minimax: "MiniMax-M2.7",
 	"minimax-cn": "MiniMax-M2.7",
 	huggingface: "moonshotai/Kimi-K2.5",
-	opencode: "claude-opus-4-6",
+	opencode: "claude-opus-4-7",
 	"opencode-go": "kimi-k2.5",
 	"kimi-coding": "kimi-for-coding",
 };
