@@ -60,7 +60,7 @@
 		"strip-ansi": "^7.1.0",
 		"typebox": "^1.1.24",
 		"undici": "^7.19.1",
-		"uuid": "^11.1.0",
+		"uuid": "^14.0.0",
 		"yaml": "^2.8.2"
 	},
 	"overrides": {
