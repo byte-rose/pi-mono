@@ -599,6 +599,7 @@ export async function main(args: string[], options?: MainOptions) {
 				thinkingLevel: sessionOptions.thinkingLevel,
 				scopedModels: sessionOptions.scopedModels,
 				tools: sessionOptions.tools,
+				noTools: sessionOptions.noTools,
 				customTools: sessionOptions.customTools,
 			});
 			const cliThinkingOverride = parsed.thinking !== undefined || cliThinkingFromModel;
