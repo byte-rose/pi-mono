@@ -5,6 +5,7 @@
 ### Added
 
 - Added `ctx.ui.setWorkingVisible()` so extensions can hide the built-in interactive working loader row without reserving layout space, plus a border-status editor example that moves working state into a custom editor border ([#3674](https://github.com/badlogic/pi-mono/issues/3674))
+- Added first-class built-in security mode startup in `packages/coding-agent`, including core security CLI flags, bundled security tool registration, and packaged Agent Browser CLI resolution without requiring the repo-local extension script.
 
 ### Fixed
 
