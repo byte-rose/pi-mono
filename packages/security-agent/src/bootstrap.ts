@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { ArtifactStore } from "@byte-rose/nyati-security-artifacts";
 import { DockerSecurityRuntime } from "@byte-rose/nyati-security-runtime";
 import { defaultSkillsDir, formatSkillsSection, loadSkillsForScope } from "@byte-rose/nyati-security-skills";
-import type { ExecFn } from "@byte-rose/nyati-security-tools";
+import type { ExecFn, SecurityTool } from "@byte-rose/nyati-security-tools";
 import {
 	attachEvidenceTool,
 	browserActionTool,
@@ -54,15 +54,13 @@ function createSecurityTools(
 	ctx: SecurityAgentContext,
 	execFn: ExecFn | null,
 	options?: Pick<CreateSecuritySessionOptions, "agentBrowserBin" | "agentBrowserUseNpx" | "agentBrowserAutoInstall">,
-) {
-	return [
+): SecurityTool<unknown>[] {
+	const tools: SecurityTool<unknown>[] = [
 		// Reporting (no sandbox needed)
 		createFindingTool(ctx.store),
 		listFindingsTool(ctx.store),
 		attachEvidenceTool(ctx.store),
 		exportReportTool(ctx.store, ctx.scope.reporting.outputDir),
-		// Runtime (null-safe when no sandbox)
-		terminalExecTool(execFn, ctx.workspace),
 		getScopeTool(ctx.scope),
 		// Browser (first-class web workflow)
 		browserActionTool(ctx.scope, ctx.runDir, {
@@ -70,11 +68,18 @@ function createSecurityTools(
 			agentBrowserUseNpx: options?.agentBrowserUseNpx,
 			agentBrowserAutoInstall: options?.agentBrowserAutoInstall,
 		}),
-		// Scanners (null-safe when no sandbox)
-		nucleiTool(execFn, ctx.workspace),
-		semgrepTool(execFn, ctx.workspace),
-		httpxTool(execFn, ctx.workspace),
 	];
+
+	if (execFn && ctx.workspace) {
+		tools.push(
+			terminalExecTool(execFn, ctx.workspace),
+			nucleiTool(execFn, ctx.workspace),
+			semgrepTool(execFn, ctx.workspace),
+			httpxTool(execFn, ctx.workspace),
+		);
+	}
+
+	return tools;
 }
 
 export async function createSecuritySession(options: CreateSecuritySessionOptions): Promise<SecuritySession> {

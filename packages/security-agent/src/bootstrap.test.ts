@@ -35,10 +35,10 @@ describe("createSecuritySession", () => {
 		await rm(TEST_RUN_DIR, { recursive: true, force: true });
 	});
 
-	it("creates session with 10 tools and store", async () => {
+	it("creates a no-sandbox session without sandbox-only tools", async () => {
 		const session = await createSecuritySession({ scope, runDir: TEST_RUN_DIR, useSandbox: false });
 		assert.ok(session.context.store);
-		assert.strictEqual(session.tools.length, 10);
+		assert.strictEqual(session.tools.length, 6);
 		assert.ok(typeof session.systemPrompt === "string");
 		assert.ok(session.systemPrompt.includes("test-eng-001"));
 		assert.ok(session.systemPrompt.length > 100);
@@ -47,15 +47,13 @@ describe("createSecuritySession", () => {
 		assert.ok(session.tools.some((t) => t.name === "list_findings"));
 		assert.ok(session.tools.some((t) => t.name === "attach_evidence"));
 		assert.ok(session.tools.some((t) => t.name === "export_report"));
-		// runtime tools
-		assert.ok(session.tools.some((t) => t.name === "terminal_exec"));
+		// always-on tools
 		assert.ok(session.tools.some((t) => t.name === "get_scope"));
-		// browser tools
 		assert.ok(session.tools.some((t) => t.name === "browser_action"));
-		// scanner tools
-		assert.ok(session.tools.some((t) => t.name === "nuclei_scan"));
-		assert.ok(session.tools.some((t) => t.name === "semgrep_scan"));
-		assert.ok(session.tools.some((t) => t.name === "httpx_probe"));
+		assert.ok(!session.tools.some((t) => t.name === "terminal_exec"));
+		assert.ok(!session.tools.some((t) => t.name === "nuclei_scan"));
+		assert.ok(!session.tools.some((t) => t.name === "semgrep_scan"));
+		assert.ok(!session.tools.some((t) => t.name === "httpx_probe"));
 		await session.cleanup();
 	});
 

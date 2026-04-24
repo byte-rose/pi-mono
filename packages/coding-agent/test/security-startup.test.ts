@@ -120,6 +120,23 @@ describe("security startup", () => {
 			expect(session.getActiveToolNames()).toContain("browser_action");
 			expect(session.getActiveToolNames()).toContain("http_request");
 			expect(session.systemPrompt).toContain(securityStartup.systemPrompt);
+			expect(session.getActiveToolNames()).not.toContain("terminal_exec");
+			expect(session.getActiveToolNames()).not.toContain("nuclei_scan");
+			expect(session.getActiveToolNames()).not.toContain("semgrep_scan");
+			expect(session.getActiveToolNames()).not.toContain("httpx_probe");
+
+			const getScope = session.agent.state.tools.find((tool) => tool.name === "get_scope");
+			expect(getScope).toBeDefined();
+
+			const scopeResult = await getScope!.execute("tool-get-scope", {}, undefined, undefined);
+			const scopeDetails = scopeResult.details as {
+				allowedActions: string[];
+				network: { browserEnabled: boolean };
+			};
+
+			expect(scopeDetails.allowedActions).toContain("browser_test");
+			expect(scopeDetails.allowedActions).not.toContain("http_test");
+			expect(scopeDetails.network.browserEnabled).toBe(true);
 
 			const httpRequest = session.agent.state.tools.find((tool) => tool.name === "http_request");
 			expect(httpRequest).toBeDefined();
