@@ -58,6 +58,11 @@ if [[ ! -x "$TSX_BIN" ]]; then
   exit 1
 fi
 
+LOCAL_AGENT_BROWSER_BIN="$SCRIPT_DIR/node_modules/.bin/agent-browser"
+if [[ -z "${PI_AGENT_BROWSER_BIN:-}" && -x "$LOCAL_AGENT_BROWSER_BIN" ]]; then
+  export PI_AGENT_BROWSER_BIN="$LOCAL_AGENT_BROWSER_BIN"
+fi
+
 exec node --import tsx "$SCRIPT_DIR/packages/coding-agent/src/cli.ts" \
   -e "$SCRIPT_DIR/scripts/security-pi-extension.ts" \
   ${ARGS[@]+"${ARGS[@]}"}
