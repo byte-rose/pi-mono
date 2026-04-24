@@ -1,5 +1,6 @@
 // packages/security-tools/src/index.ts
 
+export { browserActionTool } from "./browser/browser-action.js";
 export { httpRequestTool } from "./network/http-request.js";
 export { attachEvidenceTool } from "./reporting/attach-evidence.js";
 export { createFindingTool } from "./reporting/create-finding.js";

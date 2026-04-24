@@ -16,14 +16,14 @@ const scope: SecurityScope = {
 	executionMode: "read_only",
 	targets: [{ id: "t1", type: "web_application", value: "https://example.com", origins: ["https://example.com"] }],
 	exclusions: [],
-	allowedActions: ["read_files", "http_test"],
+	allowedActions: ["read_files", "browser_test"],
 	filesystem: { readableRoots: [], writableRoots: [], blockedPaths: [], artifactDir: TEST_RUN_DIR },
 	network: {
 		allowedDomains: ["example.com"],
 		deniedDomains: [],
 		allowedCidrs: [],
 		deniedCidrs: [],
-		browserEnabled: false,
+		browserEnabled: true,
 		proxyEnabled: false,
 	},
 	reporting: { outputDir: join(TEST_RUN_DIR, "reports"), formats: ["markdown"] },
@@ -50,8 +50,8 @@ describe("createSecuritySession", () => {
 		// runtime tools
 		assert.ok(session.tools.some((t) => t.name === "terminal_exec"));
 		assert.ok(session.tools.some((t) => t.name === "get_scope"));
-		// network tools
-		assert.ok(session.tools.some((t) => t.name === "http_request"));
+		// browser tools
+		assert.ok(session.tools.some((t) => t.name === "browser_action"));
 		// scanner tools
 		assert.ok(session.tools.some((t) => t.name === "nuclei_scan"));
 		assert.ok(session.tools.some((t) => t.name === "semgrep_scan"));

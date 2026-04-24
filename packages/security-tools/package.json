@@ -7,11 +7,12 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.js"
     }
   },
@@ -26,6 +27,7 @@
   },
   "dependencies": {
     "@byte-rose/nyati-security-artifacts": "0.1.0",
+    "@byte-rose/nyati-security-reporting": "0.1.0",
     "@byte-rose/nyati-security-runtime": "0.1.0",
     "@sinclair/typebox": "^0.34.0"
   },

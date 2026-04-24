@@ -28,11 +28,10 @@ Systematic testing across the full attack surface. Understand the application be
 - Before completion, update the shared repo wiki with source findings summary and dynamic validation next steps
 
 **Blackbox (no source)**
-- Crawl application thoroughly, interact with every feature
+- Crawl application thoroughly with `browser_action` and interact with every feature
 - Enumerate endpoints, parameters, and functionality
 - Fingerprint technology stack
 - Map user roles and access levels
-- Capture traffic with proxy to understand request/response patterns
 
 ## Phase 2: Business Logic Analysis
 
@@ -79,6 +78,7 @@ Test each attack surface methodically. Spawn focused subagents for different are
 - Demonstrate actual impact, not theoretical risk
 - Chain vulnerabilities to show maximum severity
 - Document full attack path from entry to impact
+- Capture browser-visible evidence with `browser_action` for each confirmed workflow issue
 - Use python tool for complex exploit development
 
 ## Phase 5: Reporting

@@ -30,6 +30,7 @@ import type { ModelRegistry } from "./core/model-registry.js";
 import { resolveCliModel, resolveModelScope, type ScopedModel } from "./core/model-resolver.js";
 import { restoreStdout, takeOverStdout } from "./core/output-guard.js";
 import type { CreateAgentSessionOptions } from "./core/sdk.js";
+import { createSecurityStartup, resolveSecurityStartupOptionsFromArgs } from "./core/security/startup.js";
 import {
 	formatMissingSessionCwdPrompt,
 	getMissingSessionCwdIssue,
@@ -524,91 +525,111 @@ export async function main(args: string[], options?: MainOptions) {
 		sessionManager,
 		sessionStartEvent,
 	}) => {
-		const services = await createAgentSessionServices({
-			cwd,
-			agentDir,
-			authStorage,
-			extensionFlagValues: parsed.unknownFlags,
-			resourceLoaderOptions: {
-				additionalExtensionPaths: resolvedExtensionPaths,
-				additionalSkillPaths: resolvedSkillPaths,
-				additionalPromptTemplatePaths: resolvedPromptTemplatePaths,
-				additionalThemePaths: resolvedThemePaths,
-				noExtensions: parsed.noExtensions,
-				noSkills: parsed.noSkills,
-				noPromptTemplates: parsed.noPromptTemplates,
-				noThemes: parsed.noThemes,
-				noContextFiles: parsed.noContextFiles,
-				systemPrompt: parsed.systemPrompt,
-				appendSystemPrompt: parsed.appendSystemPrompt,
-				extensionFactories: options?.extensionFactories,
-			},
-		});
-		const { settingsManager, modelRegistry, resourceLoader } = services;
-		const diagnostics: AgentSessionRuntimeDiagnostic[] = [
-			...services.diagnostics,
-			...collectSettingsDiagnostics(settingsManager, "runtime creation"),
-			...resourceLoader.getExtensions().errors.map(({ path, error }) => ({
-				type: "error" as const,
-				message: `Failed to load extension "${path}": ${error}`,
-			})),
-		];
+		const securityConfig = resolveSecurityStartupOptionsFromArgs(parsed, cwd);
+		let securityStartup = securityConfig ? await createSecurityStartup(securityConfig) : undefined;
+		const securityAppendSystemPrompt = securityStartup?.systemPrompt;
 
-		const modelPatterns = parsed.models ?? settingsManager.getEnabledModels();
-		const scopedModels =
-			modelPatterns && modelPatterns.length > 0 ? await resolveModelScope(modelPatterns, modelRegistry) : [];
-		const {
-			options: sessionOptions,
-			cliThinkingFromModel,
-			diagnostics: sessionOptionDiagnostics,
-		} = buildSessionOptions(
-			parsed,
-			scopedModels,
-			sessionManager.buildSessionContext().messages.length > 0,
-			modelRegistry,
-			settingsManager,
-		);
-		diagnostics.push(...sessionOptionDiagnostics);
+		try {
+			const services = await createAgentSessionServices({
+				cwd,
+				agentDir,
+				authStorage,
+				extensionFlagValues: parsed.unknownFlags,
+				resourceLoaderOptions: {
+					additionalExtensionPaths: resolvedExtensionPaths,
+					additionalSkillPaths: resolvedSkillPaths,
+					additionalPromptTemplatePaths: resolvedPromptTemplatePaths,
+					additionalThemePaths: resolvedThemePaths,
+					noExtensions: parsed.noExtensions,
+					noSkills: parsed.noSkills,
+					noPromptTemplates: parsed.noPromptTemplates,
+					noThemes: parsed.noThemes,
+					noContextFiles: parsed.noContextFiles,
+					systemPrompt: parsed.systemPrompt,
+					appendSystemPrompt: parsed.appendSystemPrompt,
+					appendSystemPromptOverride: securityAppendSystemPrompt
+						? (base) => [...base, securityAppendSystemPrompt]
+						: undefined,
+					extensionFactories: options?.extensionFactories,
+				},
+			});
+			const { settingsManager, modelRegistry, resourceLoader } = services;
+			const diagnostics: AgentSessionRuntimeDiagnostic[] = [
+				...(securityStartup?.diagnostics ?? []),
+				...services.diagnostics,
+				...collectSettingsDiagnostics(settingsManager, "runtime creation"),
+				...resourceLoader.getExtensions().errors.map(({ path, error }) => ({
+					type: "error" as const,
+					message: `Failed to load extension "${path}": ${error}`,
+				})),
+			];
 
-		if (parsed.apiKey) {
-			if (!sessionOptions.model) {
-				diagnostics.push({
-					type: "error",
-					message: "--api-key requires a model to be specified via --model, --provider/--model, or --models",
-				});
-			} else {
-				authStorage.setRuntimeApiKey(sessionOptions.model.provider, parsed.apiKey);
+			const modelPatterns = parsed.models ?? settingsManager.getEnabledModels();
+			const scopedModels =
+				modelPatterns && modelPatterns.length > 0 ? await resolveModelScope(modelPatterns, modelRegistry) : [];
+			const {
+				options: sessionOptions,
+				cliThinkingFromModel,
+				diagnostics: sessionOptionDiagnostics,
+			} = buildSessionOptions(
+				parsed,
+				scopedModels,
+				sessionManager.buildSessionContext().messages.length > 0,
+				modelRegistry,
+				settingsManager,
+			);
+			diagnostics.push(...sessionOptionDiagnostics);
+
+			if (securityStartup) {
+				sessionOptions.customTools = [...(sessionOptions.customTools ?? []), ...securityStartup.customTools];
 			}
+
+			if (parsed.apiKey) {
+				if (!sessionOptions.model) {
+					diagnostics.push({
+						type: "error",
+						message: "--api-key requires a model to be specified via --model, --provider/--model, or --models",
+					});
+				} else {
+					authStorage.setRuntimeApiKey(sessionOptions.model.provider, parsed.apiKey);
+				}
+			}
+
+			const created = await createAgentSessionFromServices({
+				services,
+				sessionManager,
+				sessionStartEvent,
+				model: sessionOptions.model,
+				thinkingLevel: sessionOptions.thinkingLevel,
+				scopedModels: sessionOptions.scopedModels,
+				tools: sessionOptions.tools,
+				customTools: sessionOptions.customTools,
+			});
+			const cliThinkingOverride = parsed.thinking !== undefined || cliThinkingFromModel;
+			if (created.session.model && cliThinkingOverride) {
+				let effectiveThinking = created.session.thinkingLevel;
+				if (!created.session.model.reasoning) {
+					effectiveThinking = "off";
+				} else if (effectiveThinking === "xhigh" && !supportsXhigh(created.session.model)) {
+					effectiveThinking = "high";
+				}
+				if (effectiveThinking !== created.session.thinkingLevel) {
+					created.session.setThinkingLevel(effectiveThinking);
+				}
+			}
+
+			return {
+				...created,
+				services: securityStartup ? { ...services, cleanup: securityStartup.cleanup } : services,
+				diagnostics,
+			};
+		} catch (error) {
+			if (securityStartup) {
+				await securityStartup.cleanup();
+				securityStartup = undefined;
+			}
+			throw error;
 		}
-
-		const created = await createAgentSessionFromServices({
-			services,
-			sessionManager,
-			sessionStartEvent,
-			model: sessionOptions.model,
-			thinkingLevel: sessionOptions.thinkingLevel,
-			scopedModels: sessionOptions.scopedModels,
-			tools: sessionOptions.tools,
-			customTools: sessionOptions.customTools,
-		});
-		const cliThinkingOverride = parsed.thinking !== undefined || cliThinkingFromModel;
-		if (created.session.model && cliThinkingOverride) {
-			let effectiveThinking = created.session.thinkingLevel;
-			if (!created.session.model.reasoning) {
-				effectiveThinking = "off";
-			} else if (effectiveThinking === "xhigh" && !supportsXhigh(created.session.model)) {
-				effectiveThinking = "high";
-			}
-			if (effectiveThinking !== created.session.thinkingLevel) {
-				created.session.setThinkingLevel(effectiveThinking);
-			}
-		}
-
-		return {
-			...created,
-			services,
-			diagnostics,
-		};
 	};
 	time("createRuntime");
 	const runtime = await createAgentSessionRuntime(createRuntime, {
@@ -624,12 +645,14 @@ export async function main(args: string[], options?: MainOptions) {
 			.getExtensions()
 			.extensions.flatMap((extension) => Array.from(extension.flags.values()));
 		printHelp(extensionFlags);
+		await runtime.dispose();
 		process.exit(0);
 	}
 
 	if (parsed.listModels !== undefined) {
 		const searchPattern = typeof parsed.listModels === "string" ? parsed.listModels : undefined;
 		await listModels(modelRegistry, searchPattern);
+		await runtime.dispose();
 		process.exit(0);
 	}
 
@@ -661,6 +684,7 @@ export async function main(args: string[], options?: MainOptions) {
 	time("resolveModelScope");
 	reportDiagnostics(runtime.diagnostics);
 	if (runtime.diagnostics.some((diagnostic) => diagnostic.type === "error")) {
+		await runtime.dispose();
 		process.exit(1);
 	}
 	time("createAgentSession");
@@ -670,12 +694,14 @@ export async function main(args: string[], options?: MainOptions) {
 		console.error(chalk.yellow("\nSet an API key environment variable:"));
 		console.error("  ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.");
 		console.error(chalk.yellow(`\nOr create ${getModelsPath()}`));
+		await runtime.dispose();
 		process.exit(1);
 	}
 
 	const startupBenchmark = isTruthyEnvFlag(process.env.PI_STARTUP_BENCHMARK);
 	if (startupBenchmark && appMode !== "interactive") {
 		console.error(chalk.red("Error: PI_STARTUP_BENCHMARK only supports interactive mode"));
+		await runtime.dispose();
 		process.exit(1);
 	}
 

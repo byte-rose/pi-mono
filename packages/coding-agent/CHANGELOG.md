@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added first-class built-in security mode startup in `packages/coding-agent`, including core security CLI flags, bundled security tool registration, and packaged Agent Browser CLI resolution without requiring the repo-local extension script.
+
 ## [0.67.4] - 2026-04-16
 
 ### New Features

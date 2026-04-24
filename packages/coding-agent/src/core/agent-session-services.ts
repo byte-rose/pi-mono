@@ -71,6 +71,8 @@ export interface AgentSessionServices {
 	modelRegistry: ModelRegistry;
 	resourceLoader: ResourceLoader;
 	diagnostics: AgentSessionRuntimeDiagnostic[];
+	/** Optional runtime cleanup for cwd-bound services. */
+	cleanup?(): Promise<void>;
 }
 
 function applyExtensionFlagValues(

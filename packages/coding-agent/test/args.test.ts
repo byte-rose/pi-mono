@@ -257,6 +257,45 @@ describe("parseArgs", () => {
 		});
 	});
 
+	describe("security flags", () => {
+		test("parses security string flags", () => {
+			const result = parseArgs([
+				"--security-target",
+				"https://example.com",
+				"--security-profile",
+				"deep",
+				"--security-engagement",
+				"eng-123",
+				"--security-workspace",
+				"./workspace",
+				"--security-skills-dir",
+				"./skills",
+				"--security-browser-bin",
+				"/usr/local/bin/agent-browser",
+			]);
+
+			expect(result.securityTarget).toBe("https://example.com");
+			expect(result.securityProfile).toBe("deep");
+			expect(result.securityEngagement).toBe("eng-123");
+			expect(result.securityWorkspace).toBe("./workspace");
+			expect(result.securitySkillsDir).toBe("./skills");
+			expect(result.securityBrowserBin).toBe("/usr/local/bin/agent-browser");
+		});
+
+		test("parses security boolean flags", () => {
+			const result = parseArgs([
+				"--security-target",
+				"https://example.com",
+				"--security-browser-auto-install",
+				"--security-sandbox",
+			]);
+
+			expect(result.securityTarget).toBe("https://example.com");
+			expect(result.securityBrowserAutoInstall).toBe(true);
+			expect(result.securitySandbox).toBe(true);
+		});
+	});
+
 	describe("--no-tools flag", () => {
 		test("parses --no-tools flag", () => {
 			const result = parseArgs(["--no-tools"]);

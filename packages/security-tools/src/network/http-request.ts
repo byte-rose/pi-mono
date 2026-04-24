@@ -37,9 +37,10 @@ export function httpRequestTool(scope: SecurityScope): SecurityTool<HttpRequestI
 		name: "http_request",
 		label: "HTTP Request",
 		description:
-			"Make an HTTP request to a target URL. " +
+			"Make a raw HTTP request to a target URL for direct API verification, replay, or header inspection. " +
+			"This is not a browser-rendered recon tool; use Agent Browser for page workflows. " +
 			"Domain must be within scope (allowedDomains, not in deniedDomains). " +
-			"Returns status code, headers, and response body.",
+			"Returns status code, headers, and raw response body.",
 		parameters: httpRequestSchema,
 		async execute(input) {
 			let hostname: string;

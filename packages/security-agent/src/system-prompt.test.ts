@@ -10,7 +10,7 @@ const scope: SecurityScope = {
 	executionMode: "read_only",
 	targets: [{ id: "t1", type: "web_application", value: "https://example.com", origins: ["https://example.com"] }],
 	exclusions: [],
-	allowedActions: ["http_test", "create_reports"],
+	allowedActions: ["browser_test", "create_reports"],
 	filesystem: { readableRoots: [], writableRoots: [], blockedPaths: [], artifactDir: "/tmp/artifacts" },
 	network: {
 		allowedDomains: ["example.com"],
@@ -44,7 +44,7 @@ describe("buildSecuritySystemPrompt", () => {
 
 	it("lists allowed actions", () => {
 		const prompt = buildSecuritySystemPrompt(scope);
-		assert.ok(prompt.includes("http_test"));
+		assert.ok(prompt.includes("browser_test"));
 		assert.ok(prompt.includes("create_reports"));
 	});
 
@@ -63,5 +63,20 @@ describe("buildSecuritySystemPrompt", () => {
 	it("returns a non-empty string without skillsSection", () => {
 		const prompt = buildSecuritySystemPrompt(scope);
 		assert.ok(prompt.length > 100);
+	});
+
+	it("steers browser-enabled web scopes toward Agent Browser", () => {
+		const prompt = buildSecuritySystemPrompt({
+			...scope,
+			allowedActions: [...scope.allowedActions, "browser_test"],
+			network: { ...scope.network, browserEnabled: true },
+		});
+		assert.ok(prompt.includes("browser_action"));
+		assert.ok(prompt.includes("Re-snapshot"));
+	});
+
+	it("warns when browser workflows are disabled for web targets", () => {
+		const prompt = buildSecuritySystemPrompt(scope);
+		assert.ok(prompt.includes("Browser workflows are disabled in this scope"));
 	});
 });

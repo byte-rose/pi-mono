@@ -16,6 +16,7 @@ describe("relevantSkillPaths", () => {
 
 	it("includes web vuln skills for web_application target", () => {
 		const paths = relevantSkillPaths(baseCtx);
+		assert.ok(paths.includes("tooling/agent-browser"));
 		assert.ok(paths.includes("vulnerabilities/xss"));
 		assert.ok(paths.includes("vulnerabilities/sqli"));
 		assert.ok(paths.includes("vulnerabilities/idor"));
@@ -43,6 +44,7 @@ describe("relevantSkillPaths", () => {
 
 	it("excludes web vuln skills for non-web targets", () => {
 		const paths = relevantSkillPaths({ ...baseCtx, targetTypes: ["ip_address"] });
+		assert.ok(!paths.includes("tooling/agent-browser"));
 		assert.ok(!paths.includes("vulnerabilities/xss"));
 	});
 });

@@ -29,6 +29,7 @@ export function relevantSkillPaths(ctx: SkillSelectionContext): string[] {
 	// Vulnerability skills for web/api targets
 	const isWebTarget = ctx.targetTypes.some((t) => t === "web_application" || t === "api_collection");
 	if (isWebTarget) {
+		paths.push("tooling/agent-browser");
 		paths.push("vulnerabilities/xss", "vulnerabilities/sqli", "vulnerabilities/idor", "vulnerabilities/ssrf");
 		if (ctx.executionMode === "exploit" || ctx.executionMode === "validate") {
 			paths.push("vulnerabilities/rce");

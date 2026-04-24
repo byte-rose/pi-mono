@@ -43,6 +43,14 @@ export interface Args {
 	listModels?: string | true;
 	offline?: boolean;
 	verbose?: boolean;
+	securityTarget?: string;
+	securityProfile?: string;
+	securityEngagement?: string;
+	securityWorkspace?: string;
+	securitySkillsDir?: string;
+	securityBrowserBin?: string;
+	securityBrowserAutoInstall?: boolean;
+	securitySandbox?: boolean;
 	messages: string[];
 	fileArgs: string[];
 	/** Unknown flags (potentially extension flags) - map of flag name to value */
@@ -164,6 +172,22 @@ export function parseArgs(args: string[]): Args {
 			result.verbose = true;
 		} else if (arg === "--offline") {
 			result.offline = true;
+		} else if (arg === "--security-target" && i + 1 < args.length) {
+			result.securityTarget = args[++i];
+		} else if (arg === "--security-profile" && i + 1 < args.length) {
+			result.securityProfile = args[++i];
+		} else if (arg === "--security-engagement" && i + 1 < args.length) {
+			result.securityEngagement = args[++i];
+		} else if (arg === "--security-workspace" && i + 1 < args.length) {
+			result.securityWorkspace = args[++i];
+		} else if (arg === "--security-skills-dir" && i + 1 < args.length) {
+			result.securitySkillsDir = args[++i];
+		} else if (arg === "--security-browser-bin" && i + 1 < args.length) {
+			result.securityBrowserBin = args[++i];
+		} else if (arg === "--security-browser-auto-install") {
+			result.securityBrowserAutoInstall = true;
+		} else if (arg === "--security-sandbox") {
+			result.securitySandbox = true;
 		} else if (arg.startsWith("@")) {
 			result.fileArgs.push(arg.slice(1)); // Remove @ prefix
 		} else if (arg.startsWith("--")) {
@@ -248,6 +272,14 @@ ${chalk.bold("Options:")}
   --list-models [search]         List available models (with optional fuzzy search)
   --verbose                      Force verbose startup (overrides quietStartup setting)
   --offline                      Disable startup network operations (same as PI_OFFLINE=1)
+  --security-target <url>        Enable built-in security mode for the target URL
+  --security-profile <profile>   Security profile: quick, standard, or deep (default: standard)
+  --security-engagement <id>     Security engagement ID for run directories and reports
+  --security-workspace <dir>     Workspace path for deep profile local-code scope
+  --security-skills-dir <dir>    Custom security skills directory
+  --security-browser-bin <path>  Explicit agent-browser CLI path
+  --security-browser-auto-install Automatically provision the Agent Browser runtime when missing
+  --security-sandbox             Enable the Docker-backed security sandbox runtime
   --help, -h                     Show this help
   --version, -v                  Show version number
 
@@ -328,6 +360,14 @@ ${chalk.bold("Environment Variables:")}
   ${ENV_AGENT_DIR.padEnd(32)} - Session storage directory (default: ~/${CONFIG_DIR_NAME}/agent)
   PI_PACKAGE_DIR                   - Override package directory (for Nix/Guix store paths)
   PI_OFFLINE                       - Disable startup network operations when set to 1/true/yes
+  PI_SECURITY_TARGET               - Security target URL (alias: NYATI_SECURITY_TARGET)
+  PI_SECURITY_PROFILE              - Security profile quick|standard|deep (alias: NYATI_SECURITY_PROFILE)
+  PI_SECURITY_ENGAGEMENT           - Security engagement ID (aliases: PI_SECURITY_ENGAGEMENT_ID, NYATI_SECURITY_ENGAGEMENT, NYATI_SECURITY_ENGAGEMENT_ID)
+  PI_SECURITY_WORKSPACE            - Deep profile workspace path (alias: NYATI_SECURITY_WORKSPACE)
+  PI_SECURITY_SKILLS_DIR           - Custom security skills directory (alias: NYATI_SECURITY_SKILLS_DIR)
+  PI_AGENT_BROWSER_BIN             - Explicit agent-browser CLI path (alias: NYATI_AGENT_BROWSER_BIN)
+  PI_AGENT_BROWSER_AUTO_INSTALL    - Auto-provision browser runtime with 1/true/yes or 0/false/no (alias: NYATI_AGENT_BROWSER_AUTO_INSTALL)
+  PI_SECURITY_SANDBOX              - Enable Docker sandbox with 1/true/yes (alias: NYATI_SECURITY_SANDBOX)
   PI_TELEMETRY                     - Override install telemetry when set to 1/true/yes or 0/false/no
   PI_SHARE_VIEWER_URL              - Base URL for /share command (default: https://pi.dev/session/)
   PI_AI_ANTIGRAVITY_VERSION        - Override Antigravity User-Agent version (e.g., 1.23.0)

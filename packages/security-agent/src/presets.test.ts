@@ -26,6 +26,12 @@ describe("quickBlackboxWebScan", () => {
 		assert.ok(scope.filesystem.artifactDir.includes("eng-xyz"));
 		assert.ok(scope.reporting.outputDir.includes("eng-xyz"));
 	});
+
+	it("enables browser workflows by default", () => {
+		const scope = quickBlackboxWebScan("https://example.com", "eng-001");
+		assert.ok(scope.network.browserEnabled);
+		assert.ok(scope.allowedActions.includes("browser_test"));
+	});
 });
 
 describe("standardBlackboxWebScan", () => {
@@ -38,6 +44,12 @@ describe("standardBlackboxWebScan", () => {
 		const scope = standardBlackboxWebScan("https://example.com", "eng-002");
 		assert.strictEqual(scope.scanMode, "standard");
 		assert.strictEqual(scope.executionMode, "validate");
+	});
+
+	it("enables browser workflows by default", () => {
+		const scope = standardBlackboxWebScan("https://example.com", "eng-002");
+		assert.ok(scope.network.browserEnabled);
+		assert.ok(scope.allowedActions.includes("browser_test"));
 	});
 });
 

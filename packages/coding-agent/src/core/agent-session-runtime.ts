@@ -111,8 +111,29 @@ export class AgentSessionRuntime {
 	}
 
 	private async teardownCurrent(): Promise<void> {
-		await emitSessionShutdownEvent(this.session.extensionRunner);
-		this.session.dispose();
+		let thrown: unknown;
+
+		try {
+			await emitSessionShutdownEvent(this.session.extensionRunner);
+		} catch (error) {
+			thrown = error;
+		}
+
+		try {
+			this.session.dispose();
+		} catch (error) {
+			thrown ??= error;
+		}
+
+		try {
+			await this.services.cleanup?.();
+		} catch (error) {
+			thrown ??= error;
+		}
+
+		if (thrown) {
+			throw thrown;
+		}
 	}
 
 	private apply(result: CreateAgentSessionRuntimeResult): void {
@@ -285,8 +306,7 @@ export class AgentSessionRuntime {
 	}
 
 	async dispose(): Promise<void> {
-		await emitSessionShutdownEvent(this.session.extensionRunner);
-		this.session.dispose();
+		await this.teardownCurrent();
 	}
 }
 

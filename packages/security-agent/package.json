@@ -7,12 +7,17 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.js"
+    },
+    "./presets": {
+      "types": "./src/presets.ts",
+      "import": "./dist/presets.js"
     }
   },
   "publishConfig": {

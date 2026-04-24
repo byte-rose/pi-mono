@@ -535,6 +535,21 @@ Available built-in tools: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`
 
 Combine `--no-*` with explicit flags to load exactly what you need, ignoring settings.json (e.g., `--no-extensions -e ./my-ext.ts`).
 
+### Security Options
+
+| Option | Description |
+|--------|-------------|
+| `--security-target <url>` | Enable built-in security mode for the target URL |
+| `--security-profile <profile>` | Security profile: `quick`, `standard`, or `deep` |
+| `--security-engagement <id>` | Engagement ID used for run directories and reports |
+| `--security-workspace <dir>` | Workspace path for deep profile local-code scope |
+| `--security-skills-dir <dir>` | Custom security skills directory |
+| `--security-browser-bin <path>` | Explicit `agent-browser` CLI path |
+| `--security-browser-auto-install` | Automatically provision the Agent Browser runtime when missing |
+| `--security-sandbox` | Enable the Docker-backed security sandbox runtime |
+
+Security mode is built into `packages/coding-agent`; you do not need `--extension scripts/security-pi-extension.ts` to activate it.
+
 ### Other Options
 
 | Option | Description |
@@ -584,6 +599,9 @@ pi --tools read,grep,find,ls -p "Review the code"
 
 # High thinking level
 pi --thinking high "Solve this complex problem"
+
+# Built-in security mode
+pi --security-target https://example.com --security-profile standard
 ```
 
 ### Environment Variables
@@ -593,6 +611,14 @@ pi --thinking high "Solve this complex problem"
 | `PI_CODING_AGENT_DIR` | Override config directory (default: `~/.pi/agent`) |
 | `PI_PACKAGE_DIR` | Override package directory (useful for Nix/Guix where store paths tokenize poorly) |
 | `PI_SKIP_VERSION_CHECK` | Skip version check at startup |
+| `PI_SECURITY_TARGET`, `NYATI_SECURITY_TARGET` | Security target URL |
+| `PI_SECURITY_PROFILE`, `NYATI_SECURITY_PROFILE` | Security profile (`quick`, `standard`, `deep`) |
+| `PI_SECURITY_ENGAGEMENT`, `PI_SECURITY_ENGAGEMENT_ID`, `NYATI_SECURITY_ENGAGEMENT`, `NYATI_SECURITY_ENGAGEMENT_ID` | Security engagement ID |
+| `PI_SECURITY_WORKSPACE`, `NYATI_SECURITY_WORKSPACE` | Deep profile workspace path |
+| `PI_SECURITY_SKILLS_DIR`, `NYATI_SECURITY_SKILLS_DIR` | Custom security skills directory |
+| `PI_AGENT_BROWSER_BIN`, `NYATI_AGENT_BROWSER_BIN` | Explicit `agent-browser` CLI path |
+| `PI_AGENT_BROWSER_AUTO_INSTALL`, `NYATI_AGENT_BROWSER_AUTO_INSTALL` | Auto-provision Agent Browser runtime (`1`/`true`/`yes` or `0`/`false`/`no`) |
+| `PI_SECURITY_SANDBOX`, `NYATI_SECURITY_SANDBOX` | Enable Docker sandbox (`1`/`true`/`yes`) |
 | `PI_TELEMETRY` | Override install telemetry. Use `1`/`true`/`yes` to enable or `0`/`false`/`no` to disable |
 | `PI_CACHE_RETENTION` | Set to `long` for extended prompt cache (Anthropic: 1h, OpenAI: 24h) |
 | `VISUAL`, `EDITOR` | External editor for Ctrl+G |

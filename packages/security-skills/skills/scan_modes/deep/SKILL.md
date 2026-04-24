@@ -38,7 +38,7 @@ Thorough understanding before exploitation. Test every parameter, every endpoint
 - Full port scanning across all services
 - Complete content discovery with multiple wordlists
 - Technology fingerprinting on all assets
-- API discovery via docs, JavaScript analysis, fuzzing
+- API discovery via docs, JavaScript analysis, fuzzing, and deep `browser_action` exploration of rendered flows
 - Identify all parameters including hidden and rarely-used ones
 - Map all user roles with different account types
 - Document rate limiting, WAF rules, security controls
@@ -120,7 +120,7 @@ Individual bugs are starting points. Chain them for maximum impact:
 - Treat every finding as a pivot point: ask "what does this unlock next?"
 - Continue until reaching maximum privilege / maximum data exposure / maximum control
 - Prefer end-to-end exploit paths over isolated bugs: initial foothold → pivot → privilege gain → sensitive action/data
-- Validate chains by executing the full sequence (proxy + browser for workflows, python for automation)
+- Validate chains by executing the full sequence (`browser_action` for workflows and python for automation)
 - When a pivot is found, spawn focused agents to continue the chain in the next component
 
 ## Phase 5: Persistent Testing

@@ -59,9 +59,8 @@ When a strong primitive is found (auth weakness, injection point, internal acces
 
 ## Operational Guidelines
 
-- Use browser tool for quick manual testing of critical flows
+- Use `browser_action` as the primary interface for exploratory browsing and evidence capture
 - Use terminal for targeted scans with fast presets (e.g., nuclei with critical/high templates only)
-- Use proxy to inspect traffic on key endpoints
 - Skip extensive fuzzing—use targeted payloads only
 - Create subagents only for parallel high-priority tasks
 

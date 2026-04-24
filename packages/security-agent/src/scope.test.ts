@@ -11,7 +11,7 @@ const baseScope: SecurityScope = {
 	executionMode: "read_only",
 	targets: [{ id: "t1", type: "web_application", value: "https://example.com", origins: ["https://example.com"] }],
 	exclusions: [],
-	allowedActions: ["read_files", "http_test"],
+	allowedActions: ["read_files", "browser_test"],
 	filesystem: { readableRoots: [], writableRoots: [], blockedPaths: [], artifactDir: "/tmp/run" },
 	network: {
 		allowedDomains: ["example.com"],
@@ -70,7 +70,7 @@ describe("validateScope", () => {
 				},
 			],
 			exclusions: [],
-			allowedActions: ["read_files", "http_test"],
+			allowedActions: ["read_files", "browser_test"],
 			filesystem: {
 				readableRoots: [],
 				writableRoots: [],

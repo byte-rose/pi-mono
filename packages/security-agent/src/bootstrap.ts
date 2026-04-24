@@ -9,10 +9,10 @@ import { defaultSkillsDir, formatSkillsSection, loadSkillsForScope } from "@byte
 import type { ExecFn } from "@byte-rose/nyati-security-tools";
 import {
 	attachEvidenceTool,
+	browserActionTool,
 	createFindingTool,
 	exportReportTool,
 	getScopeTool,
-	httpRequestTool,
 	httpxTool,
 	listFindingsTool,
 	nucleiTool,
@@ -35,6 +35,12 @@ export interface CreateSecuritySessionOptions {
 	 * @byte-rose/nyati-security-skills. Pass `null` to disable skill injection.
 	 */
 	skillsDir?: string | null;
+	/** Optional override for the local agent-browser binary path. */
+	agentBrowserBin?: string;
+	/** Use `npx agent-browser` instead of a directly installed binary. */
+	agentBrowserUseNpx?: boolean;
+	/** Automatically install the Agent Browser CLI when missing. Default: true */
+	agentBrowserAutoInstall?: boolean;
 }
 
 export interface SecuritySession {
@@ -44,7 +50,11 @@ export interface SecuritySession {
 	cleanup(): Promise<void>;
 }
 
-function createSecurityTools(ctx: SecurityAgentContext, execFn: ExecFn | null) {
+function createSecurityTools(
+	ctx: SecurityAgentContext,
+	execFn: ExecFn | null,
+	options?: Pick<CreateSecuritySessionOptions, "agentBrowserBin" | "agentBrowserUseNpx" | "agentBrowserAutoInstall">,
+) {
 	return [
 		// Reporting (no sandbox needed)
 		createFindingTool(ctx.store),
@@ -54,8 +64,12 @@ function createSecurityTools(ctx: SecurityAgentContext, execFn: ExecFn | null) {
 		// Runtime (null-safe when no sandbox)
 		terminalExecTool(execFn, ctx.workspace),
 		getScopeTool(ctx.scope),
-		// Network (scope-enforced, uses native fetch)
-		httpRequestTool(ctx.scope),
+		// Browser (first-class web workflow)
+		browserActionTool(ctx.scope, ctx.runDir, {
+			agentBrowserBin: options?.agentBrowserBin,
+			agentBrowserUseNpx: options?.agentBrowserUseNpx,
+			agentBrowserAutoInstall: options?.agentBrowserAutoInstall,
+		}),
 		// Scanners (null-safe when no sandbox)
 		nucleiTool(execFn, ctx.workspace),
 		semgrepTool(execFn, ctx.workspace),
@@ -96,7 +110,7 @@ export async function createSecuritySession(options: CreateSecuritySessionOption
 	const skills = skillsDir ? loadSkillsForScope(skillCtx, skillsDir) : [];
 	const systemPrompt = buildSecuritySystemPrompt(scope, formatSkillsSection(skills));
 
-	const tools = createSecurityTools(context, execFn);
+	const tools = createSecurityTools(context, execFn, options);
 
 	return {
 		context,

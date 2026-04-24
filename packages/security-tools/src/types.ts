@@ -1,22 +1,19 @@
 // packages/security-tools/src/types.ts
 
 import type { ArtifactStore } from "@byte-rose/nyati-security-artifacts";
+import type { ExecOptions, ExecResult, WorkspaceHandle } from "@byte-rose/nyati-security-runtime";
 import type { TSchema } from "@sinclair/typebox";
 import type { SecurityScope } from "./scope.js";
 
 export type { ExecOptions, ExecResult, WorkspaceHandle } from "@byte-rose/nyati-security-runtime";
 
-export type ExecFn = (
-	workspaceId: string,
-	command: string,
-	options?: import("@byte-rose/nyati-security-runtime").ExecOptions,
-) => Promise<import("@byte-rose/nyati-security-runtime").ExecResult>;
+export type ExecFn = (workspaceId: string, command: string, options?: ExecOptions) => Promise<ExecResult>;
 
 export interface SecurityAgentContext {
 	store: ArtifactStore;
 	scope: SecurityScope;
 	runDir: string;
-	workspace?: import("@byte-rose/nyati-security-runtime").WorkspaceHandle;
+	workspace?: WorkspaceHandle;
 }
 
 /** Simplified tool descriptor — Bootstrap adapts this into a full pi AgentTool. */
