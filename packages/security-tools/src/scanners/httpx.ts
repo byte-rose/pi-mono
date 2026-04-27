@@ -1,4 +1,7 @@
 import { type Static, Type } from "@sinclair/typebox";
+import type { SecurityScope } from "../scope.js";
+import { validateNetworkTargetInScope } from "../scope-policy.js";
+import { quoteShellArg } from "../shell.js";
 import type { ExecFn, SecurityTool, WorkspaceHandle } from "../types.js";
 
 export interface HttpxResult {
@@ -39,7 +42,11 @@ const httpxSchema = Type.Object({
 
 type HttpxInput = Static<typeof httpxSchema>;
 
-export function httpxTool(exec: ExecFn | null, workspace: WorkspaceHandle | undefined): SecurityTool<HttpxInput> {
+export function httpxTool(
+	exec: ExecFn | null,
+	workspace: WorkspaceHandle | undefined,
+	scope?: SecurityScope,
+): SecurityTool<HttpxInput> {
 	return {
 		name: "httpx_probe",
 		label: "Httpx Probe",
@@ -52,8 +59,16 @@ export function httpxTool(exec: ExecFn | null, workspace: WorkspaceHandle | unde
 			if (!exec || !workspace) {
 				return { success: false, error: "No sandbox available. Start session with useSandbox: true." };
 			}
+			if (scope) {
+				const scopeCheck = validateNetworkTargetInScope(scope, input.target);
+				if (!scopeCheck.ok) {
+					return { success: false, error: scopeCheck.error };
+				}
+			}
 			const timeout = input.timeoutSeconds ?? 10;
-			const command = `httpx -u ${input.target} -json -status-code -title -tech-detect -content-length -response-time -silent -timeout ${timeout}`;
+			const command =
+				`httpx -u ${quoteShellArg(input.target)} ` +
+				`-json -status-code -title -tech-detect -content-length -response-time -silent -timeout ${quoteShellArg(String(timeout))}`;
 			const result = await exec(workspace.workspaceId, command, { timeoutMs: (timeout + 30) * 1000 });
 			const httpxResults = parseHttpxOutput(result.stdout);
 			return {

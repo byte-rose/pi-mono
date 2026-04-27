@@ -20,12 +20,25 @@ export type SecurityTarget =
 	| IpAddressTarget
 	| ApiCollectionTarget;
 
+export type TargetStatus = "original" | "proposed" | "active" | "rejected";
+export type TargetConfidence = "low" | "medium" | "high";
+
+export interface TargetProvenance {
+	addedAt: number;
+	addedBy: "user" | "agent" | "system";
+	discoveredFrom?: string;
+	reason?: string;
+	confidence?: TargetConfidence;
+}
+
 export interface RepositoryTarget {
 	id: string;
 	type: "repository";
 	value: string;
 	workspacePath?: string;
 	defaultBranch?: string;
+	status?: TargetStatus;
+	provenance?: TargetProvenance;
 }
 
 export interface LocalCodeTarget {
@@ -33,6 +46,8 @@ export interface LocalCodeTarget {
 	type: "local_code";
 	value: string;
 	workspacePath: string;
+	status?: TargetStatus;
+	provenance?: TargetProvenance;
 }
 
 export interface WebApplicationTarget {
@@ -41,6 +56,8 @@ export interface WebApplicationTarget {
 	value: string;
 	origins: string[];
 	authProfileId?: string;
+	status?: TargetStatus;
+	provenance?: TargetProvenance;
 }
 
 export interface IpAddressTarget {
@@ -48,6 +65,8 @@ export interface IpAddressTarget {
 	type: "ip_address";
 	value: string;
 	ports?: number[];
+	status?: TargetStatus;
+	provenance?: TargetProvenance;
 }
 
 export interface ApiCollectionTarget {
@@ -55,6 +74,8 @@ export interface ApiCollectionTarget {
 	type: "api_collection";
 	value: string;
 	workspacePath?: string;
+	status?: TargetStatus;
+	provenance?: TargetProvenance;
 }
 
 export interface ScopeExclusion {

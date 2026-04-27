@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { SecurityScope } from "../scope.js";
+import { isDomainAllowed } from "../scope-policy.js";
 import type { SecurityTool } from "../types.js";
 
 const browserActionSchema = Type.Object({
@@ -76,13 +77,6 @@ type BrowserCommandRunner = (
 	args: string[],
 	options: BrowserCommandRunnerOptions,
 ) => Promise<BrowserCommandResult>;
-
-function isDomainAllowed(scope: SecurityScope, hostname: string): boolean {
-	if (!hostname.trim()) return false;
-	if (scope.network.deniedDomains.some((d) => hostname === d || hostname.endsWith(`.${d}`))) return false;
-	if (scope.network.allowedDomains.length === 0) return true;
-	return scope.network.allowedDomains.some((d) => hostname === d || hostname.endsWith(`.${d}`));
-}
 
 function sanitizeSessionName(value: string): string {
 	const normalized = value.trim().replace(/[^A-Za-z0-9._-]+/g, "-");

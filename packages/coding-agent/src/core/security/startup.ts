@@ -432,13 +432,15 @@ export async function createSecurityStartup(
 			...securitySession.tools.map((tool) => wrapSecurityTool(tool as SecurityTool<unknown>)),
 			createBlockedHttpRequestTool(config),
 		],
-		systemPrompt: securitySession.systemPrompt,
 		diagnostics: [
 			{
 				type: "info",
 				message: `Security mode enabled: ${formatSecurityStatus(config)} (${config.target})`,
 			},
 		],
+		get systemPrompt() {
+			return securitySession.buildSystemPrompt();
+		},
 		async cleanup() {
 			if (cleanedUp) {
 				return;

@@ -2,6 +2,8 @@
 
 import type { ArtifactStore } from "@byte-rose/nyati-security-artifacts";
 import { type Static, Type } from "@sinclair/typebox";
+import type { SecurityScope } from "../scope.js";
+import { findOutOfScopeTargetReferences } from "../scope-policy.js";
 import type { SecurityTool } from "../types.js";
 
 const attachEvidenceSchema = Type.Object({
@@ -17,11 +19,13 @@ const attachEvidenceSchema = Type.Object({
 	]),
 	content: Type.String({ description: "Evidence content (HTTP exchange, terminal output, file snippet, etc.)" }),
 	targets: Type.Optional(Type.Array(Type.String())),
+	sourceTool: Type.Optional(Type.String({ description: "Tool that produced this evidence, if known." })),
+	sourceUrl: Type.Optional(Type.String({ description: "URL associated with this evidence, if known." })),
 });
 
 type AttachEvidenceInput = Static<typeof attachEvidenceSchema>;
 
-export function attachEvidenceTool(store: ArtifactStore): SecurityTool<AttachEvidenceInput> {
+export function attachEvidenceTool(store: ArtifactStore, scope?: SecurityScope): SecurityTool<AttachEvidenceInput> {
 	return {
 		name: "attach_evidence",
 		label: "Attach Evidence",
@@ -35,12 +39,30 @@ export function attachEvidenceTool(store: ArtifactStore): SecurityTool<AttachEvi
 				return { success: false, error: `Finding '${input.findingId}' not found` };
 			}
 
+			const targets = input.targets ?? finding.targets;
+			if (scope) {
+				const invalidTargets = findOutOfScopeTargetReferences(scope, targets);
+				if (invalidTargets.length > 0) {
+					return {
+						success: false,
+						error: `Evidence references targets outside scope: ${invalidTargets.join(", ")}`,
+					};
+				}
+			}
+
 			const evidenceId = await store.appendEvidence({
 				findingId: input.findingId,
 				type: input.type,
 				title: input.title,
-				content: input.content,
-				targets: input.targets ?? finding.targets,
+				content:
+					input.sourceTool || input.sourceUrl
+						? {
+								body: input.content,
+								sourceTool: input.sourceTool,
+								sourceUrl: input.sourceUrl,
+							}
+						: input.content,
+				targets,
 			});
 
 			await store.updateFinding(input.findingId, {

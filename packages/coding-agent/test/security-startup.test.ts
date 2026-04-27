@@ -118,6 +118,7 @@ describe("security startup", () => {
 			});
 
 			expect(session.getActiveToolNames()).toContain("browser_action");
+			expect(session.getActiveToolNames()).toContain("add_scope_target");
 			expect(session.getActiveToolNames()).toContain("http_request");
 			expect(session.systemPrompt).toContain(securityStartup.systemPrompt);
 			expect(session.getActiveToolNames()).not.toContain("terminal_exec");
@@ -137,6 +138,22 @@ describe("security startup", () => {
 			expect(scopeDetails.allowedActions).toContain("browser_test");
 			expect(scopeDetails.allowedActions).not.toContain("http_test");
 			expect(scopeDetails.network.browserEnabled).toBe(true);
+
+			const addScopeTarget = session.agent.state.tools.find((tool) => tool.name === "add_scope_target");
+			expect(addScopeTarget).toBeDefined();
+
+			const addResult = await addScopeTarget!.execute(
+				"tool-add-scope-target",
+				{ url: "https://api.example.net" },
+				undefined,
+				undefined,
+			);
+
+			expect(addResult.details).toMatchObject({ success: true, added: true });
+
+			const expandedScopeResult = await getScope!.execute("tool-get-expanded-scope", {}, undefined, undefined);
+			expect(JSON.stringify(expandedScopeResult.details)).toContain("https://api.example.net/");
+			expect(securityStartup.systemPrompt).toContain("https://api.example.net/");
 
 			const httpRequest = session.agent.state.tools.find((tool) => tool.name === "http_request");
 			expect(httpRequest).toBeDefined();

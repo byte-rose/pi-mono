@@ -2539,8 +2539,8 @@ export const MODELS = {
 				cacheRead: 0.5,
 				cacheWrite: 0,
 			},
-			contextWindow: 272000,
-			maxTokens: 128000,
+			contextWindow: 1050000,
+			maxTokens: 130000,
 		} satisfies Model<"azure-openai-responses">,
 		"o1": {
 			id: "o1",
@@ -6336,8 +6336,8 @@ export const MODELS = {
 				cacheRead: 0.5,
 				cacheWrite: 0,
 			},
-			contextWindow: 272000,
-			maxTokens: 128000,
+			contextWindow: 1050000,
+			maxTokens: 130000,
 		} satisfies Model<"openai-responses">,
 		"o1": {
 			id: "o1",
@@ -8301,7 +8301,7 @@ export const MODELS = {
 				cacheRead: 0.024999999999999998,
 				cacheWrite: 0.08333333333333334,
 			},
-			contextWindow: 1048576,
+			contextWindow: 1000000,
 			maxTokens: 8192,
 		} satisfies Model<"openai-completions">,
 		"google/gemini-2.0-flash-lite-001": {

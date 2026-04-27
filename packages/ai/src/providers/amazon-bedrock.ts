@@ -482,7 +482,7 @@ function handleContentBlockStop(
  * whose ARNs don't contain the model name.
  */
 function supportsAdaptiveThinking(modelId: string, modelName?: string): boolean {
-	const candidates = modelName ? [modelId, modelName] : [modelId];
+	const candidates = getModelIdentityCandidates(modelId, modelName);
 	return candidates.some(
 		(s) =>
 			s.includes("opus-4-6") ||
@@ -499,7 +499,7 @@ function mapThinkingLevelToEffort(
 	modelId: string,
 	modelName?: string,
 ): "low" | "medium" | "high" | "xhigh" | "max" {
-	const candidates = modelName ? [modelId, modelName] : [modelId];
+	const candidates = getModelIdentityCandidates(modelId, modelName);
 	switch (level) {
 		case "minimal":
 		case "low":
@@ -565,10 +565,7 @@ function isAnthropicClaudeModel(model: Model<"bedrock-converse-stream">): boolea
  * Amazon Nova models have automatic caching and don't need explicit cache points.
  */
 function supportsPromptCaching(model: Model<"bedrock-converse-stream">): boolean {
-	const candidates = [model.id.toLowerCase()];
-	if (model.name) {
-		candidates.push(model.name.toLowerCase());
-	}
+	const candidates = getModelIdentityCandidates(model.id, model.name);
 
 	const hasClaudeRef = candidates.some((s) => s.includes("claude"));
 	if (!hasClaudeRef) {
@@ -584,6 +581,15 @@ function supportsPromptCaching(model: Model<"bedrock-converse-stream">): boolean
 	// Claude 3.5 Haiku
 	if (candidates.some((s) => s.includes("claude-3-5-haiku"))) return true;
 	return false;
+}
+
+function getModelIdentityCandidates(modelId: string, modelName?: string): string[] {
+	const rawCandidates = modelName ? [modelId, modelName] : [modelId];
+	return rawCandidates.flatMap((candidate) => {
+		const lower = candidate.toLowerCase();
+		const normalized = lower.replace(/[\s_]+/g, "-");
+		return normalized === lower ? [lower] : [lower, normalized];
+	});
 }
 
 /**

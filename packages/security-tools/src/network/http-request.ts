@@ -2,6 +2,7 @@
 
 import { type Static, Type } from "@sinclair/typebox";
 import type { SecurityScope } from "../scope.js";
+import { isDomainAllowed } from "../scope-policy.js";
 import type { SecurityTool } from "../types.js";
 
 const httpRequestSchema = Type.Object({
@@ -24,13 +25,6 @@ const httpRequestSchema = Type.Object({
 });
 
 type HttpRequestInput = Static<typeof httpRequestSchema>;
-
-function isDomainAllowed(scope: SecurityScope, hostname: string): boolean {
-	if (!hostname.trim()) return false;
-	if (scope.network.deniedDomains.some((d) => hostname === d || hostname.endsWith(`.${d}`))) return false;
-	if (scope.network.allowedDomains.length === 0) return true;
-	return scope.network.allowedDomains.some((d) => hostname === d || hostname.endsWith(`.${d}`));
-}
 
 export function httpRequestTool(scope: SecurityScope): SecurityTool<HttpRequestInput> {
 	return {

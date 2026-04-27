@@ -4,6 +4,8 @@ import type { ArtifactStore } from "@byte-rose/nyati-security-artifacts";
 import { normalizeCve, normalizeCwe, validateFinding } from "@byte-rose/nyati-security-artifacts";
 import { calculateCvss, validateCvssBreakdown } from "@byte-rose/nyati-security-reporting";
 import { type Static, Type } from "@sinclair/typebox";
+import type { SecurityScope } from "../scope.js";
+import { findOutOfScopeTargetReferences, isTargetReferenceInScope } from "../scope-policy.js";
 import type { SecurityTool } from "../types.js";
 
 const CvssBreakdownSchema = Type.Object({
@@ -35,7 +37,7 @@ const createFindingSchema = Type.Object({
 
 type CreateFindingInput = Static<typeof createFindingSchema>;
 
-export function createFindingTool(store: ArtifactStore): SecurityTool<CreateFindingInput> {
+export function createFindingTool(store: ArtifactStore, scope?: SecurityScope): SecurityTool<CreateFindingInput> {
 	return {
 		name: "create_finding",
 		label: "Create Finding",
@@ -54,6 +56,19 @@ export function createFindingTool(store: ArtifactStore): SecurityTool<CreateFind
 			});
 			if (validationErrors.length > 0) {
 				return { success: false, errors: validationErrors };
+			}
+
+			if (scope) {
+				const invalidTargets = findOutOfScopeTargetReferences(scope, input.targets ?? []);
+				if (invalidTargets.length > 0) {
+					return {
+						success: false,
+						error: `Finding references targets outside scope: ${invalidTargets.join(", ")}`,
+					};
+				}
+				if (input.endpoint && !isTargetReferenceInScope(scope, input.endpoint)) {
+					return { success: false, error: `Finding endpoint is outside scope: ${input.endpoint}` };
+				}
 			}
 
 			const cve = input.cve ? normalizeCve(input.cve) : undefined;

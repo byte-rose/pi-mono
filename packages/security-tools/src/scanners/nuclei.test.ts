@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { SecurityScope } from "../scope.js";
+import type { ExecResult, WorkspaceHandle } from "../types.js";
 import { nucleiTool, parseNucleiOutput } from "./nuclei.js";
 
 const fixtureNdjson = [
@@ -23,6 +25,33 @@ const fixtureNdjson = [
 		matched: "Apache/2.4.51",
 	}),
 ].join("\n");
+
+const scope: SecurityScope = {
+	engagementId: "eng-nuclei-001",
+	mode: "blackbox",
+	scanMode: "standard",
+	executionMode: "validate",
+	targets: [{ id: "t1", type: "web_application", value: "https://example.com", origins: ["https://example.com"] }],
+	exclusions: [],
+	allowedActions: ["network_scan"],
+	filesystem: { readableRoots: [], writableRoots: [], blockedPaths: [], artifactDir: "/tmp/run" },
+	network: {
+		allowedDomains: ["example.com"],
+		deniedDomains: [],
+		allowedCidrs: [],
+		deniedCidrs: [],
+		browserEnabled: false,
+		proxyEnabled: false,
+	},
+	reporting: { outputDir: "/tmp/reports", formats: ["markdown"] },
+	metadata: { source: "cli", verified: true, createdAt: 0, updatedAt: 0 },
+};
+
+const workspace: WorkspaceHandle = {
+	workspaceId: "workspace-1",
+	containerId: "container-1",
+	workspacePath: "/workspace",
+};
 
 describe("parseNucleiOutput", () => {
 	it("parses two findings from fixture NDJSON", () => {
@@ -77,5 +106,27 @@ describe("nucleiTool", () => {
 		const result = await tool.execute({ target: "https://example.com" });
 		assert.strictEqual(result.success, false);
 		assert.ok((result.error as string).includes("No sandbox"));
+	});
+
+	it("rejects out-of-scope targets", async () => {
+		const tool = nucleiTool(async () => ({ stdout: "", stderr: "", exitCode: 0 }), workspace, scope);
+		const result = await tool.execute({ target: "https://outside.example.net" });
+		assert.strictEqual(result.success, false);
+		assert.match(String(result.error), /outside scope/i);
+	});
+
+	it("quotes scoped target and template before executing nuclei", async () => {
+		let capturedCommand = "";
+		const exec = async (_workspaceId: string, command: string): Promise<ExecResult> => {
+			capturedCommand = command;
+			return { stdout: fixtureNdjson, stderr: "", exitCode: 0 };
+		};
+		const tool = nucleiTool(exec, workspace, scope);
+
+		const result = await tool.execute({ target: "https://example.com", template: "http/cves/o'hai.yaml" });
+
+		assert.strictEqual(result.success, true);
+		assert.match(capturedCommand, /nuclei -u 'https:\/\/example\.com'/);
+		assert.match(capturedCommand, /-t 'http\/cves\/o'\\''hai\.yaml'/);
 	});
 });

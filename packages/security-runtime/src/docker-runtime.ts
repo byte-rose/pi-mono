@@ -8,6 +8,10 @@ import type { CreateWorkspaceInput, ExecOptions, ExecResult, SecurityRuntime, Wo
 const CONTAINER_WORKSPACE_PATH = "/workspace";
 const DEFAULT_IMAGE = process.env.NYATI_SANDBOX_IMAGE ?? "nyati-sandbox:latest";
 
+function quoteShellArg(value: string): string {
+	return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
 export class DockerSecurityRuntime implements SecurityRuntime {
 	private docker: Dockerode;
 	private containers = new Map<string, Dockerode.Container>();
@@ -96,8 +100,13 @@ export class DockerSecurityRuntime implements SecurityRuntime {
 		}
 	}
 
-	async syncTargets(_workspaceId: string, _targets: unknown[]): Promise<void> {
-		// Phase 2: write target config into container for scope enforcement
+	async syncTargets(workspaceId: string, targets: unknown[]): Promise<void> {
+		const payload = Buffer.from(JSON.stringify({ targets }, null, 2), "utf-8").toString("base64");
+		await this.execInContainer(
+			workspaceId,
+			`mkdir -p ${quoteShellArg(`${CONTAINER_WORKSPACE_PATH}/.nyati`)} && ` +
+				`printf %s ${quoteShellArg(payload)} | base64 -d > ${quoteShellArg(`${CONTAINER_WORKSPACE_PATH}/.nyati/targets.json`)}`,
+		);
 	}
 
 	cleanup(): void {

@@ -1,4 +1,7 @@
 import { type Static, Type } from "@sinclair/typebox";
+import type { SecurityScope } from "../scope.js";
+import { validateNetworkTargetInScope } from "../scope-policy.js";
+import { quoteShellArg } from "../shell.js";
 import type { ExecFn, SecurityTool, WorkspaceHandle } from "../types.js";
 
 export interface NucleiFinding {
@@ -45,7 +48,11 @@ const nucleiSchema = Type.Object({
 
 type NucleiInput = Static<typeof nucleiSchema>;
 
-export function nucleiTool(exec: ExecFn | null, workspace: WorkspaceHandle | undefined): SecurityTool<NucleiInput> {
+export function nucleiTool(
+	exec: ExecFn | null,
+	workspace: WorkspaceHandle | undefined,
+	scope?: SecurityScope,
+): SecurityTool<NucleiInput> {
 	return {
 		name: "nuclei_scan",
 		label: "Nuclei Scan",
@@ -58,9 +65,16 @@ export function nucleiTool(exec: ExecFn | null, workspace: WorkspaceHandle | und
 			if (!exec || !workspace) {
 				return { success: false, error: "No sandbox available. Start session with useSandbox: true." };
 			}
-			const templateArg = input.template ? `-t ${input.template}` : "";
+			if (scope) {
+				const scopeCheck = validateNetworkTargetInScope(scope, input.target);
+				if (!scopeCheck.ok) {
+					return { success: false, error: scopeCheck.error };
+				}
+			}
+			const templateArg = input.template ? `-t ${quoteShellArg(input.template)}` : "";
 			const timeout = input.timeoutSeconds ?? 120;
-			const command = `nuclei -u ${input.target} -jsonl ${templateArg} -timeout ${timeout} -silent`.trim();
+			const command =
+				`nuclei -u ${quoteShellArg(input.target)} -jsonl ${templateArg} -timeout ${quoteShellArg(String(timeout))} -silent`.trim();
 			const result = await exec(workspace.workspaceId, command, { timeoutMs: (timeout + 10) * 1000 });
 			const findings = parseNucleiOutput(result.stdout);
 			return {

@@ -1,6 +1,6 @@
 // packages/security-agent/src/bootstrap.test.ts
 import assert from "node:assert/strict";
-import { rm } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, it } from "node:test";
@@ -38,7 +38,7 @@ describe("createSecuritySession", () => {
 	it("creates a no-sandbox session without sandbox-only tools", async () => {
 		const session = await createSecuritySession({ scope, runDir: TEST_RUN_DIR, useSandbox: false });
 		assert.ok(session.context.store);
-		assert.strictEqual(session.tools.length, 6);
+		assert.strictEqual(session.tools.length, 7);
 		assert.ok(typeof session.systemPrompt === "string");
 		assert.ok(session.systemPrompt.includes("test-eng-001"));
 		assert.ok(session.systemPrompt.length > 100);
@@ -49,11 +49,31 @@ describe("createSecuritySession", () => {
 		assert.ok(session.tools.some((t) => t.name === "export_report"));
 		// always-on tools
 		assert.ok(session.tools.some((t) => t.name === "get_scope"));
+		assert.ok(session.tools.some((t) => t.name === "add_scope_target"));
 		assert.ok(session.tools.some((t) => t.name === "browser_action"));
 		assert.ok(!session.tools.some((t) => t.name === "terminal_exec"));
 		assert.ok(!session.tools.some((t) => t.name === "nuclei_scan"));
 		assert.ok(!session.tools.some((t) => t.name === "semgrep_scan"));
 		assert.ok(!session.tools.some((t) => t.name === "httpx_probe"));
+		await session.cleanup();
+	});
+
+	it("rebuilds the system prompt from expanded scope", async () => {
+		const session = await createSecuritySession({
+			scope: structuredClone(scope),
+			runDir: TEST_RUN_DIR,
+			useSandbox: false,
+		});
+		const addTarget = session.tools.find((tool) => tool.name === "add_scope_target");
+		assert.ok(addTarget);
+
+		await addTarget.execute({ url: "https://new.example.com" });
+
+		assert.ok(session.buildSystemPrompt().includes("https://new.example.com/"));
+		const scopeJson = JSON.parse(await readFile(join(TEST_RUN_DIR, "scope.json"), "utf-8")) as SecurityScope;
+		assert.ok(scopeJson.targets.some((target) => target.value === "https://new.example.com/"));
+		const scopeEvents = await readFile(join(TEST_RUN_DIR, "scope-events.jsonl"), "utf-8");
+		assert.match(scopeEvents, /target_added/);
 		await session.cleanup();
 	});
 

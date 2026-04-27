@@ -40,6 +40,7 @@ export function buildSecuritySystemPrompt(scope: SecurityScope, skillsSection?: 
 		"## Constraints",
 		"",
 		"- Only test targets listed in scope; respect allowedDomains and deniedDomains",
+		"- If a discovered in-engagement URL must be tested, call add_scope_target before using scoped network tools on it",
 		"- Do not modify production data or cause service disruption",
 		"- Use terminal_exec only when a sandbox is available (useSandbox: true)",
 		...browserGuidance,
