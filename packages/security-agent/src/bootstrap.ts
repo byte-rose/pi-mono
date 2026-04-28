@@ -4,9 +4,10 @@ import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { ArtifactStore } from "@byte-rose/nyati-security-artifacts";
+import type { SecurityRuntime } from "@byte-rose/nyati-security-runtime";
 import { DockerSecurityRuntime } from "@byte-rose/nyati-security-runtime";
 import { defaultSkillsDir, formatSkillsSection, loadSkillsForScope } from "@byte-rose/nyati-security-skills";
-import type { ExecFn, ScopeMutationEvent, SecurityTool } from "@byte-rose/nyati-security-tools";
+import type { AllowedAction, ExecFn, ScopeMutationEvent, SecurityTool } from "@byte-rose/nyati-security-tools";
 import {
 	addScopeTargetTool,
 	attachEvidenceTool,
@@ -14,6 +15,7 @@ import {
 	createFindingTool,
 	exportReportTool,
 	getScopeTool,
+	httpRequestTool,
 	httpxTool,
 	listFindingsTool,
 	nucleiTool,
@@ -22,7 +24,7 @@ import {
 } from "@byte-rose/nyati-security-tools";
 import type { SecurityAgentContext } from "./context.js";
 import type { SecurityScope } from "./scope.js";
-import { validateScope } from "./scope-validator.js";
+import { isActionAllowed, validateScope } from "./scope-validator.js";
 import { buildSecuritySystemPrompt } from "./system-prompt.js";
 
 export interface CreateSecuritySessionOptions {
@@ -31,6 +33,8 @@ export interface CreateSecuritySessionOptions {
 	runDir?: string;
 	/** Whether to provision a Docker sandbox. Default: false */
 	useSandbox?: boolean;
+	/** Override the runtime implementation, primarily for tests. */
+	runtime?: SecurityRuntime;
 	/**
 	 * Directory containing SKILL.md files. Default: the built-in skills bundled with
 	 * @byte-rose/nyati-security-skills. Pass `null` to disable skill injection.
@@ -52,6 +56,34 @@ export interface SecuritySession {
 	cleanup(): Promise<void>;
 }
 
+function requireAllowedActions<TInput>(
+	scope: SecurityScope,
+	tool: SecurityTool<TInput>,
+	actions: AllowedAction[],
+): SecurityTool<TInput> {
+	if (actions.length === 0) {
+		return tool;
+	}
+
+	return {
+		...tool,
+		async execute(input) {
+			const missingActions = actions.filter((action) => !isActionAllowed(scope, action));
+			if (missingActions.length > 0) {
+				return {
+					success: false,
+					error: `Tool '${tool.name}' is outside scope. Missing allowedActions: ${missingActions.join(", ")}`,
+				};
+			}
+			return tool.execute(input);
+		},
+	};
+}
+
+function getSandboxCapabilities(scope: SecurityScope): string[] {
+	return isActionAllowed(scope, "network_scan") ? ["NET_RAW"] : [];
+}
+
 function createSecurityTools(
 	ctx: SecurityAgentContext,
 	execFn: ExecFn | null,
@@ -59,27 +91,36 @@ function createSecurityTools(
 	hooks?: { onScopeChanged?: (event: ScopeMutationEvent) => Promise<void> },
 ): SecurityTool<unknown>[] {
 	const tools: SecurityTool<unknown>[] = [
-		// Reporting (no sandbox needed)
-		createFindingTool(ctx.store, ctx.scope),
-		listFindingsTool(ctx.store),
-		attachEvidenceTool(ctx.store, ctx.scope),
-		exportReportTool(ctx.store, ctx.scope.reporting.outputDir),
+		requireAllowedActions(ctx.scope, createFindingTool(ctx.store, ctx.scope), ["create_reports"]),
+		requireAllowedActions(ctx.scope, listFindingsTool(ctx.store), ["create_reports"]),
+		requireAllowedActions(ctx.scope, attachEvidenceTool(ctx.store, ctx.scope), ["create_reports"]),
+		requireAllowedActions(ctx.scope, exportReportTool(ctx.store, ctx.scope.reporting.outputDir), ["create_reports"]),
 		getScopeTool(ctx.scope),
 		addScopeTargetTool(ctx.scope, { onScopeChanged: hooks?.onScopeChanged }),
-		// Browser (first-class web workflow)
-		browserActionTool(ctx.scope, ctx.runDir, {
-			agentBrowserBin: options?.agentBrowserBin,
-			agentBrowserUseNpx: options?.agentBrowserUseNpx,
-			agentBrowserAutoInstall: options?.agentBrowserAutoInstall,
-		}),
+		requireAllowedActions(
+			ctx.scope,
+			browserActionTool(ctx.scope, ctx.runDir, {
+				agentBrowserBin: options?.agentBrowserBin,
+				agentBrowserUseNpx: options?.agentBrowserUseNpx,
+				agentBrowserAutoInstall: options?.agentBrowserAutoInstall,
+			}),
+			["browser_test"],
+		),
+		requireAllowedActions(ctx.scope, httpRequestTool(ctx.scope), ["http_test"]),
 	];
 
 	if (execFn && ctx.workspace) {
 		tools.push(
-			terminalExecTool(execFn, ctx.workspace),
-			nucleiTool(execFn, ctx.workspace, ctx.scope),
-			semgrepTool(execFn, ctx.workspace),
-			httpxTool(execFn, ctx.workspace, ctx.scope),
+			requireAllowedActions(ctx.scope, terminalExecTool(execFn, ctx.workspace), ["run_commands"]),
+			requireAllowedActions(ctx.scope, nucleiTool(execFn, ctx.workspace, ctx.scope), [
+				"run_commands",
+				"network_scan",
+			]),
+			requireAllowedActions(ctx.scope, semgrepTool(execFn, ctx.workspace), ["read_files", "run_commands"]),
+			requireAllowedActions(ctx.scope, httpxTool(execFn, ctx.workspace, ctx.scope), [
+				"run_commands",
+				"network_scan",
+			]),
 		);
 	}
 
@@ -110,21 +151,24 @@ export async function createSecuritySession(options: CreateSecuritySessionOption
 	const store = new ArtifactStore(runDir);
 	const context: SecurityAgentContext = { scope, store, runDir };
 
-	let runtime: DockerSecurityRuntime | undefined;
+	let runtime: SecurityRuntime | undefined;
 	let execFn: ExecFn | null = null;
 
 	if (useSandbox) {
-		runtime = new DockerSecurityRuntime();
-		const workspace = await runtime.createWorkspace({ agentId: scope.engagementId });
+		runtime = options.runtime ?? new DockerSecurityRuntime();
+		const workspace = await runtime.createWorkspace({
+			agentId: scope.engagementId,
+			capAdd: getSandboxCapabilities(scope),
+		});
 		context.workspace = workspace;
-		execFn = runtime.execInContainer.bind(runtime);
 		await runtime.syncTargets(workspace.workspaceId, scope.targets);
+		execFn = runtime.execInContainer.bind(runtime);
 	}
 
 	const skillCtx = {
 		scanMode: scope.scanMode,
 		executionMode: scope.executionMode,
-		targetTypes: scope.targets.map((t) => t.type),
+		targetTypes: scope.targets.map((target) => target.type),
 	};
 	const skills = skillsDir ? loadSkillsForScope(skillCtx, skillsDir) : [];
 	const skillsSection = formatSkillsSection(skills);

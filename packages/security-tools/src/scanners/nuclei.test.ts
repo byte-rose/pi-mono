@@ -14,8 +14,8 @@ const fixtureNdjson = [
 			reference: ["https://nvd.nist.gov/vuln/detail/CVE-2021-44228"],
 		},
 		host: "https://example.com",
-		matched: `https://example.com/?x=${"jndi:ldap://test.example.com/a"}`,
-		"matched-at": `https://example.com/?x=${"jndi:ldap://test.example.com/a"}`,
+		matched: "https://example.com/?x=jndi:ldap://test.example.com/a",
+		"matched-at": "https://example.com/?x=jndi:ldap://test.example.com/a",
 		description: "Apache Log4j2 <=2.14.1 JNDI features do not protect against attacker-controlled LDAP.",
 	}),
 	JSON.stringify({
@@ -115,18 +115,21 @@ describe("nucleiTool", () => {
 		assert.match(String(result.error), /outside scope/i);
 	});
 
-	it("quotes scoped target and template before executing nuclei", async () => {
-		let capturedCommand = "";
+	it("shell-escapes structured arguments before execution", async () => {
+		const commands: string[] = [];
 		const exec = async (_workspaceId: string, command: string): Promise<ExecResult> => {
-			capturedCommand = command;
-			return { stdout: fixtureNdjson, stderr: "", exitCode: 0 };
+			commands.push(command);
+			return { stdout: "", stderr: "", exitCode: 0 };
 		};
-		const tool = nucleiTool(exec, workspace, scope);
-
-		const result = await tool.execute({ target: "https://example.com", template: "http/cves/o'hai.yaml" });
-
+		const tool = nucleiTool(exec, workspace);
+		const result = await tool.execute({
+			target: "https://example.com; touch /tmp/pwned",
+			template: "cves && echo x",
+			timeoutSeconds: 45,
+		});
 		assert.strictEqual(result.success, true);
-		assert.match(capturedCommand, /nuclei -u 'https:\/\/example\.com'/);
-		assert.match(capturedCommand, /-t 'http\/cves\/o'\\''hai\.yaml'/);
+		assert.deepStrictEqual(commands, [
+			"nuclei -u 'https://example.com; touch /tmp/pwned' -jsonl -t 'cves && echo x' -timeout 45 -silent",
+		]);
 	});
 });

@@ -81,4 +81,20 @@ describe("semgrepTool", () => {
 		assert.strictEqual(result.success, false);
 		assert.ok((result.error as string).includes("No sandbox"));
 	});
+
+	it("shell-escapes structured arguments before execution", async () => {
+		const commands: string[] = [];
+		const fakeExec = async (_workspaceId: string, command: string) => {
+			commands.push(command);
+			return { stdout: fixtureJson, stderr: "", exitCode: 0 };
+		};
+		const workspace = { workspaceId: "ws-1", containerId: "c-1", workspacePath: "/workspace" };
+		const tool = semgrepTool(fakeExec, workspace);
+		const result = await tool.execute({
+			config: "auto; rm -rf /",
+			path: "./src && cat /etc/passwd",
+		});
+		assert.strictEqual(result.success, true);
+		assert.deepStrictEqual(commands, ["semgrep --config 'auto; rm -rf /' './src && cat /etc/passwd' --json --quiet"]);
+	});
 });

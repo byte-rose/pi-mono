@@ -75,7 +75,6 @@ describe("parseHttpxOutput", () => {
 
 	it("handles missing optional fields gracefully", () => {
 		const results = parseHttpxOutput(fixtureNdjson);
-		// second entry has no tech field → technologies is undefined
 		assert.strictEqual(results[1].technologies, undefined);
 	});
 
@@ -111,17 +110,20 @@ describe("httpxTool", () => {
 		assert.match(String(result.error), /outside scope/i);
 	});
 
-	it("quotes scoped targets before executing httpx", async () => {
-		let capturedCommand = "";
+	it("shell-escapes structured arguments before execution", async () => {
+		const commands: string[] = [];
 		const exec = async (_workspaceId: string, command: string): Promise<ExecResult> => {
-			capturedCommand = command;
+			commands.push(command);
 			return { stdout: fixtureNdjson, stderr: "", exitCode: 0 };
 		};
-		const tool = httpxTool(exec, workspace, scope);
-
-		const result = await tool.execute({ target: "https://example.com/search?q=';id" });
-
+		const tool = httpxTool(exec, workspace);
+		const result = await tool.execute({
+			target: "https://example.com; curl https://evil.test",
+			timeoutSeconds: 7,
+		});
 		assert.strictEqual(result.success, true);
-		assert.match(capturedCommand, /httpx -u 'https:\/\/example\.com\/search\?q='\\'';id'/);
+		assert.deepStrictEqual(commands, [
+			"httpx -u 'https://example.com; curl https://evil.test' -json -status-code -title -tech-detect -content-length -response-time -silent -timeout 7",
+		]);
 	});
 });

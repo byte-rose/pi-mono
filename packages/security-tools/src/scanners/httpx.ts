@@ -66,9 +66,7 @@ export function httpxTool(
 				}
 			}
 			const timeout = input.timeoutSeconds ?? 10;
-			const command =
-				`httpx -u ${quoteShellArg(input.target)} ` +
-				`-json -status-code -title -tech-detect -content-length -response-time -silent -timeout ${quoteShellArg(String(timeout))}`;
+			const command = `httpx -u ${quoteShellArg(input.target)} -json -status-code -title -tech-detect -content-length -response-time -silent -timeout ${timeout}`;
 			const result = await exec(workspace.workspaceId, command, { timeoutMs: (timeout + 30) * 1000 });
 			const httpxResults = parseHttpxOutput(result.stdout);
 			return {

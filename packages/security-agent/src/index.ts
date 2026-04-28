@@ -4,3 +4,4 @@ export * from "./context.js";
 export * from "./presets.js";
 export * from "./scope.js";
 export * from "./scope-validator.js";
+export { buildSecuritySystemPrompt } from "./system-prompt.js";

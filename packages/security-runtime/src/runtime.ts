@@ -10,6 +10,7 @@ export interface CreateWorkspaceInput {
 	agentId: string;
 	localSources?: Array<{ sourcePath: string; workspaceSubdir?: string }>;
 	envVars?: Record<string, string>;
+	capAdd?: string[];
 }
 
 export interface ExecOptions {

@@ -1,5 +1,6 @@
 // packages/security-runtime/src/docker-runtime.ts
 import { randomBytes } from "node:crypto";
+import { posix as pathPosix } from "node:path";
 import { PassThrough } from "node:stream";
 import Dockerode from "dockerode";
 import { SandboxInitializationError } from "./errors.js";
@@ -7,9 +8,38 @@ import type { CreateWorkspaceInput, ExecOptions, ExecResult, SecurityRuntime, Wo
 
 const CONTAINER_WORKSPACE_PATH = "/workspace";
 const DEFAULT_IMAGE = process.env.NYATI_SANDBOX_IMAGE ?? "nyati-sandbox:latest";
+const EXEC_PID_MARKER = "__NYATI_PID__=";
+const SCOPE_TARGETS_PATH = `${CONTAINER_WORKSPACE_PATH}/.nyati/targets.json`;
+const SHELL_SINGLE_QUOTE_ESCAPE = `'"'"'`;
 
-function quoteShellArg(value: string): string {
-	return `'${value.replace(/'/g, "'\\''")}'`;
+function shellEscape(value: string): string {
+	if (value.length === 0) {
+		return "''";
+	}
+
+	return `'${value.replaceAll("'", SHELL_SINGLE_QUOTE_ESCAPE)}'`;
+}
+
+export function buildExecCommand(command: string): string[] {
+	return ["sh", "-lc", `printf '${EXEC_PID_MARKER}%s\\n' "$$" >&2; exec sh -lc "$1"`, "sh", command];
+}
+
+export function stripExecPidMarker(stderr: string): { pid: number | null; stderr: string } {
+	const match = stderr.match(new RegExp(`^${EXEC_PID_MARKER}(\\d+)\\r?\\n?`));
+	if (!match) {
+		return { pid: null, stderr };
+	}
+
+	return {
+		pid: Number(match[1]),
+		stderr: stderr.slice(match[0].length),
+	};
+}
+
+export function buildSyncTargetsCommand(targets: unknown[]): string {
+	const content = JSON.stringify({ syncedAt: new Date().toISOString(), targets }, null, 2);
+	const targetDir = pathPosix.dirname(SCOPE_TARGETS_PATH);
+	return `mkdir -p ${shellEscape(targetDir)} && printf '%s' ${shellEscape(content)} > ${shellEscape(SCOPE_TARGETS_PATH)}`;
 }
 
 export class DockerSecurityRuntime implements SecurityRuntime {
@@ -21,7 +51,7 @@ export class DockerSecurityRuntime implements SecurityRuntime {
 	}
 
 	async createWorkspace(input: CreateWorkspaceInput): Promise<WorkspaceHandle> {
-		const { agentId, localSources = [], envVars = {} } = input;
+		const { agentId, localSources = [], envVars = {}, capAdd = [] } = input;
 		const containerName = `nyati-${agentId.slice(0, 8)}-${randomBytes(4).toString("hex")}`;
 
 		try {
@@ -40,9 +70,7 @@ export class DockerSecurityRuntime implements SecurityRuntime {
 			Tty: true,
 			Env: Object.entries(envVars).map(([k, v]) => `${k}=${v}`),
 			Labels: { "nyati-agent-id": agentId },
-			HostConfig: {
-				CapAdd: ["NET_ADMIN", "NET_RAW"],
-			},
+			HostConfig: capAdd.length > 0 ? { CapAdd: capAdd } : {},
 		});
 
 		await container.start();
@@ -80,6 +108,19 @@ export class DockerSecurityRuntime implements SecurityRuntime {
 		// Full tar-streaming copy is a Phase 2 enhancement.
 	}
 
+	private async terminateExecProcess(container: Dockerode.Container, pid: number): Promise<void> {
+		if (!Number.isInteger(pid) || pid <= 0) {
+			return;
+		}
+
+		const killExec = await container.exec({
+			Cmd: ["sh", "-lc", `kill -TERM ${pid} 2>/dev/null || true; sleep 1; kill -KILL ${pid} 2>/dev/null || true`],
+			AttachStdout: false,
+			AttachStderr: false,
+		});
+		await killExec.start({ hijack: false, stdin: false });
+	}
+
 	async destroyWorkspace(workspaceId: string): Promise<void> {
 		const container = this.containers.get(workspaceId);
 		if (!container) {
@@ -101,12 +142,10 @@ export class DockerSecurityRuntime implements SecurityRuntime {
 	}
 
 	async syncTargets(workspaceId: string, targets: unknown[]): Promise<void> {
-		const payload = Buffer.from(JSON.stringify({ targets }, null, 2), "utf-8").toString("base64");
-		await this.execInContainer(
-			workspaceId,
-			`mkdir -p ${quoteShellArg(`${CONTAINER_WORKSPACE_PATH}/.nyati`)} && ` +
-				`printf %s ${quoteShellArg(payload)} | base64 -d > ${quoteShellArg(`${CONTAINER_WORKSPACE_PATH}/.nyati/targets.json`)}`,
-		);
+		const result = await this.execInContainer(workspaceId, buildSyncTargetsCommand(targets));
+		if (result.exitCode !== 0) {
+			throw new Error(`Failed to sync targets into container: ${result.stderr || result.stdout}`);
+		}
 	}
 
 	cleanup(): void {
@@ -121,7 +160,7 @@ export class DockerSecurityRuntime implements SecurityRuntime {
 		const container = this.containers.get(workspaceId) ?? this.docker.getContainer(workspaceId);
 
 		const exec = await container.exec({
-			Cmd: ["sh", "-c", command],
+			Cmd: buildExecCommand(command),
 			AttachStdout: true,
 			AttachStderr: true,
 			WorkingDir: options?.workingDir ?? CONTAINER_WORKSPACE_PATH,
@@ -141,22 +180,51 @@ export class DockerSecurityRuntime implements SecurityRuntime {
 		const stream = await exec.start({ hijack: true, stdin: false });
 
 		await new Promise<void>((resolve, reject) => {
-			this.docker.modem.demuxStream(stream, stdoutStream, stderrStream);
-			stream.on("end", () => {
+			let settled = false;
+			let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+			const resolveOnce = () => {
+				if (settled) return;
+				settled = true;
+				if (timeoutId) clearTimeout(timeoutId);
 				stdoutStream.end();
 				stderrStream.end();
 				resolve();
-			});
-			stream.on("error", reject);
+			};
+			const rejectOnce = (error: Error) => {
+				if (settled) return;
+				settled = true;
+				if (timeoutId) clearTimeout(timeoutId);
+				stdoutStream.end();
+				stderrStream.end();
+				reject(error);
+			};
+
+			this.docker.modem.demuxStream(stream, stdoutStream, stderrStream);
+			stream.on("end", resolveOnce);
+			stream.on("error", (error) => rejectOnce(error instanceof Error ? error : new Error(String(error))));
 			if (options?.timeoutMs) {
-				setTimeout(() => reject(new Error(`Command timed out after ${options.timeoutMs}ms`)), options.timeoutMs);
+				timeoutId = setTimeout(() => {
+					void (async () => {
+						const stderrSoFar = Buffer.concat(stderrChunks).toString("utf-8");
+						const { pid } = stripExecPidMarker(stderrSoFar);
+						if (pid !== null) {
+							await this.terminateExecProcess(container, pid).catch(() => {});
+						}
+						stream.destroy();
+						rejectOnce(new Error(`Command timed out after ${options.timeoutMs}ms`));
+					})();
+				}, options.timeoutMs);
 			}
 		});
 
 		const info = await exec.inspect();
+		const stdout = Buffer.concat(stdoutChunks).toString("utf-8");
+		const stderr = Buffer.concat(stderrChunks).toString("utf-8");
+		const sanitizedStderr = stripExecPidMarker(stderr).stderr;
 		return {
-			stdout: Buffer.concat(stdoutChunks).toString("utf-8"),
-			stderr: Buffer.concat(stderrChunks).toString("utf-8"),
+			stdout,
+			stderr: sanitizedStderr,
 			exitCode: info.ExitCode ?? -1,
 		};
 	}

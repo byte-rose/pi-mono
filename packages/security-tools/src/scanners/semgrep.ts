@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { quoteShellArg } from "../shell.js";
 import type { ExecFn, SecurityTool, WorkspaceHandle } from "../types.js";
 
 export interface SemgrepFinding {
@@ -68,7 +69,7 @@ export function semgrepTool(exec: ExecFn | null, workspace: WorkspaceHandle | un
 				return { success: false, error: "No sandbox available. Start session with useSandbox: true." };
 			}
 			const timeout = input.timeoutSeconds ?? 120;
-			const command = `semgrep --config ${input.config} ${input.path} --json --quiet`;
+			const command = `semgrep --config ${quoteShellArg(input.config)} ${quoteShellArg(input.path)} --json --quiet`;
 			const result = await exec(workspace.workspaceId, command, { timeoutMs: (timeout + 10) * 1000 });
 			const { findings, errors } = parseSemgrepOutput(result.stdout);
 			return {

@@ -71,10 +71,9 @@ export function nucleiTool(
 					return { success: false, error: scopeCheck.error };
 				}
 			}
-			const templateArg = input.template ? `-t ${quoteShellArg(input.template)}` : "";
+			const templateArg = input.template ? ` -t ${quoteShellArg(input.template)}` : "";
 			const timeout = input.timeoutSeconds ?? 120;
-			const command =
-				`nuclei -u ${quoteShellArg(input.target)} -jsonl ${templateArg} -timeout ${quoteShellArg(String(timeout))} -silent`.trim();
+			const command = `nuclei -u ${quoteShellArg(input.target)} -jsonl${templateArg} -timeout ${timeout} -silent`;
 			const result = await exec(workspace.workspaceId, command, { timeoutMs: (timeout + 10) * 1000 });
 			const findings = parseNucleiOutput(result.stdout);
 			return {
